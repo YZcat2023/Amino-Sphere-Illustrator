@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Sequence Viewer - 球形氨基酸序列可视化工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: '微软雅黑', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+            background-color: #1a1c2a;
+            color: #eef2ff;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .left-pane {
+            flex: 2.8;
+            min-width: 360px;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 24px 24px 24px;
+            height: calc(100vh - 48px);
+            /* 减去 body 的 padding */
+            overflow: hidden;
+            /* 防止溢出 */
+        }
+
+
+
+        .left-pane h2 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: #0f172a;
+            border-left: 5px solid #3b82f6;
+            padding-left: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .export-btn {
+            background: #1e293b;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
+        }
+
+        .export-btn:hover {
+            background: #0f172a;
+            transform: translateY(-1px);
+        }
+
+        #previewArea {
+            /* background: #fafcff;
+            border-radius: 24px;
+            border: 1px solid #e2e8f0; */
+            flex: 1;
+            /* 占据剩余所有空间 */
+            overflow: hidden;
+            /* 内容超出时滚动 */
+            padding: 24px 20px;
+            position: relative;
+            min-height: 90vh;
+            /* flex 子项需要这个才能正确收缩 */
+
+        }
+
+        .balls-container {
+            position: relative;
+            min-height: 100px;
+            width: 100%;
+            transform-origin: 0 0;
+            transition: transform 0.2s ease;
+        }
+
+        .ball-wrapper {
+            position: absolute;
+            margin: 0;
+            padding: 0;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .ball-wrapper:active {
+            cursor: pointer;
+        }
+
+        /* 选中样式：外发光红框效果 */
+        .ball-wrapper.selected-ball {
+            filter: drop-shadow(0 0 0 3px #ff3b3b) drop-shadow(0 0 0 5px rgba(220, 38, 38, 0.4));
+            border-radius: 50%;
+        }
+
+        .aa-ball {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-family: '微软雅黑', 'SF Mono', 'Fira Code', monospace;
+            transition: box-shadow 0.1s, filter 0.1s;
+            will-change: transform;
+            background-size: cover;
+        }
+
+        .aa-ball.shadow-3d {
+            box-shadow: inset -3px -3px 8px rgba(0, 0, 0, 0.3), inset 2px 2px 6px rgba(255, 255, 255, 0.5), 3px 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .preview-placeholder {
+            color: #6c757d;
+            text-align: center;
+            width: 100%;
+            font-size: 1rem;
+            font-family: '微软雅黑', sans-serif;
+        }
+
+        .right-pane {
+            flex: 1.3;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+
+        .group {
+            background: #232635;
+            border-radius: 24px;
+            padding: 18px 22px;
+            border: 1px solid #343a4a;
+        }
+
+        .group h3 {
+            margin: 0 0 16px 0;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #cbd5f0;
+            border-left: 3px solid #3b82f6;
+            padding-left: 12px;
+            font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
+        }
+
+        .input-group-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+            width: 100%;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 90px;
+            padding: 12px;
+            font-family: '微软雅黑', monospace;
+            background-color: #11131f;
+            border: 1px solid #3e445b;
+            border-radius: 18px;
+            color: #f1f5f9;
+            resize: vertical;
+            font-size: 0.85rem;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            flex: 2;
+            background: #11131f;
+            border: 1px solid #3e445b;
+            padding: 8px 12px;
+            border-radius: 16px;
+            color: white;
+            font-family: '微软雅黑', sans-serif;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 0.8rem;
+            min-width: 100px;
+            color: #b9c3e2;
+            font-family: '微软雅黑', sans-serif;
+        }
+
+        input[type="color"] {
+            width: 48px;
+            height: 40px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        .action-btn {
+            background: #3b82f6;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 8px;
+            font-family: '微软雅黑', sans-serif;
+        }
+
+        .action-btn:hover {
+            background: #2563eb;
+        }
+
+        /* 色块面板 */
+        .color-palette-simple {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+            background: transparent;
+            padding: 0;
+            border: none;
+        }
+
+        .simple-color-block {
+            width: 36px;
+            height: 36px;
+            border-radius: 0px;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: transform 0.1s;
+        }
+
+        .simple-color-block:hover {
+            transform: scale(1.05);
+            border-color: white;
+        }
+
+        .param-hint {
+            font-size: 12px;
+            color: #8d99bd;
+            margin-left: 8px;
+            font-family: '微软雅黑', sans-serif;
+            margin-top: 12px;
+            margin-bottom: 12px;
+        }
+
+        #colorListArea h4 {
+            font-size: 0.8rem;
+            margin: 8px 0 6px;
+            color: #a5b4fc;
+            font-family: '微软雅黑', sans-serif;
+        }
+
+        /* 框选虚线红框醒目样式 */
+        /* .selection-drag-box {
+            position: absolute;
+            border: 2px solid #ff4444;
+            background-color: rgba(255, 68, 68, 0.15);
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 0 4px rgba(255, 0, 0, 0.5);
+        } */
+
+        /* 新增面板 */
+        .stats-line {
+            display: flex;
+            justify-content: space-between;
+            background: #1e2130;
+            border-radius: 20px;
+            padding: 10px 16px;
+            margin-top: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .stats-line span {
+            color: #a5b4fc;
+        }
+
+        .layout-control {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .small-btn {
+            background: #2d3748;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .small-btn:hover {
+            background: #4a5568;
+        }
+
+        .quick-aa-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .quick-aa {
+            background: #1e293b;
+            border-radius: 30px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-family: monospace;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+
+        .quick-aa:hover {
+            background: #3b82f6;
+            transform: scale(1.02);
+        }
+
+        .group .action-btn.secondary {
+            background: #4b5563;
+        }
+
+        .group .action-btn.secondary:hover {
+            background: #374151;
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            background: #11131f;
+            padding: 2px 8px;
+            border-radius: 30px;
+            display: inline-block;
+            margin-left: 10px;
+            color: #9ca3af;
+        }
+
+        .preview-scroll-wrapper {
+            background: #fafcff;
+            border-radius: 24px;
+            border: 1px solid #e2e8f0;
+            flex: 1;
+            overflow: auto;
+            /* 滚动条在这里 */
+            min-height: 0;
+            border-radius: 24px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="left-pane">
+            <h2>
+                <span>氨基酸序列可视化</span>
+                <div class="export-buttons">
+                    <!-- <button id="exportSVGbtn" class="export-btn">下载 SVG</button> -->
+                    <button id="exportPPTbtn" class="export-btn">下载 PPT</button>
+                </div>
+            </h2>
+            <div class="preview-scroll-wrapper">
+                <div id="previewArea">
+                    <div class="preview-placeholder">加载序列中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-pane">
+            <div class="group">
+                <h3>序列输入</h3>
+                <div class="input-group">
+                    <label>PDB 代码：</label>
+                    <input type="text" id="pdbCode" placeholder="1UBQ, 3GB1" value="1UBQ">
+                </div>
+                <div class="input-group" style="flex-direction: column; align-items: stretch;">
+                    <label>序列 (单字母/三字母):</label>
+                    <textarea id="sequence" rows="3" placeholder="例: Glu-Ala-Lys-Gly-Ser 或 MVLS"></textarea>
+                </div>
+                <button id="loadSequenceBtn" class="action-btn">渲染序列</button>
+            </div>
+
+            <div class="group">
+                <h3>视觉 & 光影</h3>
+                <div class="input-group-container">
+                    <div class="input-group"><label>圆形大小(px)：</label><input type="number" id="circleSize" value="48"
+                            min="28" max="84" step="2"></div>
+                    <div class="input-group"><label>填充色：</label><input type="color" id="circleColor" value="#3B82F6">
+                    </div>
+                    <div class="input-group"><label>边框粗细：</label><input type="number" id="circleBorder" value="1.5"
+                            min="0" max="5" step="0.5"></div>
+                    <div class="input-group"><label>边框色：</label><input type="color" id="borderColor" value="#1E293B">
+                    </div>
+
+                    <!-- <div class="input-group">
+                        <label>字体类型：</label>
+                        <div class="custom-select-wrapper" style="flex:2">
+                            <div class="custom-select" id="fontFamilyCustomSelect">
+                                <div class="select-trigger">
+                                    <span class="select-value">微软雅黑</span>
+                                    <span class="select-arrow">▼</span>
+                                </div>
+                                <div class="select-dropdown">
+                                    <div class="select-option" data-value="'微软雅黑', 'Microsoft YaHei', sans-serif"
+                                        data-display="微软雅黑">微软雅黑</div>
+                                    <div class="select-option" data-value="'Segoe UI', system-ui, sans-serif"
+                                        data-display="Segoe UI">Segoe UI</div>
+                                    <div class="select-option" data-value="'Arial', sans-serif" data-display="Arial">
+                                        Arial</div>
+                                </div>
+                            </div>
+                            <select id="fontFamilySelect" style="display:none">
+                                <option value="'微软雅黑', 'Microsoft YaHei', sans-serif">微软雅黑</option>
+                                <option value="'Segoe UI', system-ui, sans-serif">Segoe UI</option>
+                                <option value="'Arial', sans-serif">Arial</option>
+                            </select>
+                        </div>
+                    </div> -->
+                    <div class="input-group">
+                        <label>字体类型：</label>
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select" id="fontFamilyCustomSelect">
+                                <div class="select-trigger">
+                                    <span class="select-value">微软雅黑</span>
+                                    <span class="select-arrow">▼</span>
+                                </div>
+                                <div class="select-dropdown">
+                                    <div class="select-option" data-value="'微软雅黑', 'Microsoft YaHei', sans-serif"
+                                        data-display="微软雅黑">微软雅黑</div>
+                                    <div class="select-option" data-value="'Segoe UI', system-ui, sans-serif"
+                                        data-display="Segoe UI">Segoe UI</div>
+                                    <div class="select-option" data-value="'Arial', sans-serif" data-display="Arial">
+                                        Arial</div>
+                                </div>
+                            </div>
+                            <select id="fontFamilySelect" style="display:none">
+                                <option value="'微软雅黑', 'Microsoft YaHei', sans-serif">微软雅黑</option>
+                                <option value="'Segoe UI', system-ui, sans-serif">Segoe UI</option>
+                                <option value="'Arial', sans-serif">Arial</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group"><label>字体颜色：</label><input type="color" id="fontColor" value="#FFFFFF">
+                    </div>
+                    <style>
+                        .custom-select-wrapper {
+                            position: relative;
+                            width: 100%;
+                            flex: 2;
+                        }
+
+                        .custom-select {
+                            position: relative;
+                            width: 100%;
+                            font-size: 0.85rem;
+                        }
+
+                        .select-trigger {
+                            background: #11131f;
+                            border: 1px solid #3e445b;
+                            padding: 8px 12px;
+                            border-radius: 16px;
+                            color: white;
+                            font-family: '微软雅黑', sans-serif;
+                            cursor: pointer;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            transition: all 0.2s;
+                        }
+
+                        .select-trigger:hover {
+                            border-color: #5a6080;
+                        }
+
+                        .select-value {
+                            user-select: none;
+                        }
+
+                        .select-arrow {
+                            font-size: 12px;
+                            transition: transform 0.2s;
+                        }
+
+                        .custom-select.open .select-arrow {
+                            transform: rotate(180deg);
+                        }
+
+                        .select-dropdown {
+                            position: absolute;
+                            top: calc(100% + 4px);
+                            left: 0;
+                            right: 0;
+                            background: #11131f;
+                            border: 1px solid #3e445b;
+                            border-radius: 16px;
+                            overflow: hidden;
+                            display: none;
+                            z-index: 100;
+                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                        }
+
+                        .custom-select.open .select-dropdown {
+                            display: block;
+                        }
+
+                        .select-option {
+                            padding: 8px 12px;
+                            color: white;
+                            font-family: '微软雅黑', sans-serif;
+                            cursor: pointer;
+                            transition: background 0.2s;
+                        }
+
+                        .select-option:hover {
+                            background: #1e2235;
+                        }
+
+                        .select-option.selected {
+                            background: #2a2f47;
+                        }
+                    </style>
+
+                    <script>
+                        (function () {
+                            const customSelect = document.getElementById('fontFamilyCustomSelect');
+                            const hiddenSelect = document.getElementById('fontFamilySelect');
+                            const trigger = customSelect.querySelector('.select-trigger');
+                            const valueSpan = customSelect.querySelector('.select-value');
+                            const options = customSelect.querySelectorAll('.select-option');
+
+                            // 点击触发开关
+                            trigger.addEventListener('click', function (e) {
+                                e.stopPropagation();
+                                customSelect.classList.toggle('open');
+                            });
+
+                            // 选择选项
+                            options.forEach(opt => {
+                                // 在选项点击事件中，更新完 hiddenSelect 后添加：
+                                opt.addEventListener('click', function (e) {
+                                    const value = this.getAttribute('data-value');
+                                    const display = this.getAttribute('data-display');
+
+                                    valueSpan.textContent = display;
+                                    hiddenSelect.value = value;
+
+                                    // 👇 添加这一行，触发全局刷新
+                                    if (typeof refreshStyle === 'function') {
+                                        refreshStyle();
+                                    }
+
+                                    const changeEvent = new Event('change', { bubbles: true });
+                                    hiddenSelect.dispatchEvent(changeEvent);
+
+                                    options.forEach(o => o.classList.remove('selected'));
+                                    this.classList.add('selected');
+                                    customSelect.classList.remove('open');
+                                });
+                            });
+
+                            // 点击其他地方关闭
+                            document.addEventListener('click', function (e) {
+                                if (!customSelect.contains(e.target)) {
+                                    customSelect.classList.remove('open');
+                                }
+                            });
+
+                            // 同步原始select的值变化（可选）
+                            hiddenSelect.addEventListener('change', function () {
+                                const selectedValue = this.value;
+                                const selectedOption = Array.from(options).find(opt => opt.getAttribute('data-value') === selectedValue);
+                                if (selectedOption) {
+                                    valueSpan.textContent = selectedOption.getAttribute('data-display');
+                                    options.forEach(o => o.classList.remove('selected'));
+                                    selectedOption.classList.add('selected');
+                                }
+                            });
+                        })();
+                    </script>
+
+                    <div class="input-group"><label>字体大小(px)：</label><input type="number" id="fontSize" value="0"
+                            min="0" max="30" step="1"></div>
+                    <div class="input-group"><label>模拟光影(3D高光阴影)：</label><input type="checkbox" id="shadowEffect"
+                            style="width: 20px; height: 20px;" checked></div>
+                </div>
+                <!-- <button id="applyStyleBtn" class="action-btn">应用样式</button> -->
+            </div>
+
+            <div class="group">
+                <h3>调色板</h3>
+                <div class="input-group"><label>快速选色：</label><input type="color" id="colorPicker"
+                        value="#F97316"><button id="saveColor" class="action-btn" style="margin-top:0">保存颜色</button>
+                </div>
+                <div id="savedColors">
+                    <div id="colorListArea" class="color-palette-simple"></div>
+                </div>
+                <div class="input-group" style="margin-top: 12px;"><label>比对高亮色：</label><input type="color"
+                        id="highlightColorPicker" value="#F97316"></div>
+            </div>
+
+            <div class="group">
+                <h3>手动高亮残基</h3>
+                <div class="input-group">
+                    <label>高亮位置：</label>
+                    <input type="text" id="highlightPositions" placeholder="例: 3,5-8,12" value="">
+                </div>
+                <div class="input-group">
+                    <label>高亮颜色：</label>
+                    <input type="color" id="manualHighlightColor" value="#F97316">
+                </div>
+                <button id="manualHighlightBtn" class="action-btn">应用高亮</button>
+                <div class="param-hint">支持单个位置(3,5,12)或连续范围(5-8)，多个用逗号分隔</div>
+            </div>
+
+            <div class="group">
+                <h3>链式旋转 & 布局</h3>
+                <div class="input-group"><label>旋转角度(°)：</label><input type="number" id="rotationAngleInput" value="30"
+                        min="5" max="180" step="5"></div>
+                <div class="param-hint">点击某球：该球及其后续序列视作长棍进行旋转。左键顺时针，右键逆时针，再点击恢复原状</div>
+                <!-- <div class="param-hint">点击1次顺时针，2次逆时针，3次恢复原状</div> -->
+                <div class="layout-control">
+                    <button id="resetLayoutBtn" class="small-btn">重置布局</button>
+                    <button id="toggleSpiralBtn" class="small-btn">螺旋布局 🌊</button>
+                    <button id="clearSelectionBtn" class="small-btn">清除选中</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+        (function () {
+            // DOM 元素
+            const previewArea = document.getElementById('previewArea');
+            const pdbCodeInput = document.getElementById('pdbCode');
+            const sequenceTextarea = document.getElementById('sequence');
+            const loadBtn = document.getElementById('loadSequenceBtn');
+            const circleSizeInput = document.getElementById('circleSize');
+            const circleColorInput = document.getElementById('circleColor');
+            const circleBorderInput = document.getElementById('circleBorder');
+            const borderColorInput = document.getElementById('borderColor');
+            const fontColorInput = document.getElementById('fontColor');
+            const fontSizeInput = document.getElementById('fontSize');
+            const shadowCheckbox = document.getElementById('shadowEffect');
+            // const applyStyleBtn = document.getElementById('applyStyleBtn');
+            const colorPicker = document.getElementById('colorPicker');
+            const highlightColorPicker = document.getElementById('highlightColorPicker');
+            const saveColorBtn = document.getElementById('saveColor');
+            const compareBtn = document.getElementById('compareButton');
+            const sourceAAInput = document.getElementById('sourceAA');
+            // const targetAAInput = document.getElementById('targetAA');
+            const rotationAngleInput = document.getElementById('rotationAngleInput');
+            const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+            const resetLayoutBtn = document.getElementById('resetLayoutBtn');
+            const toggleSpiralBtn = document.getElementById('toggleSpiralBtn');
+            // const exportSVG = document.getElementById('exportSVGbtn');
+            const exportPPT = document.getElementById('exportPPTbtn');
+            const totalCountSpan = document.getElementById('totalCount');
+            const uniqueCountSpan = document.getElementById('uniqueCount');
+            const hydrophobicPercentSpan = document.getElementById('hydrophobicPercent');
+            const seqLengthBadge = document.getElementById('seqLengthBadge');
+            const quickAaPanel = document.getElementById('quickAaPanel');
+
+            // 核心数据
+            let currentThreeLetters = [];
+            let currentSingleLetters = [];
+            let ballElements = [];
+            let selectedIndices = new Set();
+
+            let chainBallsData = []; // {x, y, angle}
+            let rotationStates = {};
+            let layoutMode = 'linear'; // linear, spiral
+
+            const threeToSingle = { 'ALA': 'A', 'ARG': 'R', 'ASN': 'N', 'ASP': 'D', 'CYS': 'C', 'GLN': 'Q', 'GLU': 'E', 'GLY': 'G', 'HIS': 'H', 'ILE': 'I', 'LEU': 'L', 'LYS': 'K', 'MET': 'M', 'PHE': 'F', 'PRO': 'P', 'SER': 'S', 'THR': 'T', 'TRP': 'W', 'TYR': 'Y', 'VAL': 'V' };
+            const singleToThree = { 'A': 'Ala', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'C': 'Cys', 'Q': 'Gln', 'E': 'Glu', 'G': 'Gly', 'H': 'His', 'I': 'Ile', 'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe', 'P': 'Pro', 'S': 'Ser', 'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val' };
+            const hydrophobicSet = new Set(['A', 'V', 'L', 'I', 'P', 'F', 'M', 'W']);
+
+            function parseToBoth(raw) {
+                if (!raw.trim()) return { three: [], single: [] };
+                let str = raw.trim();
+                if (str.includes('-') || (str.includes(' ') && /[A-Za-z]{3}/.test(str))) {
+                    let parts = str.split(/[-\s]+/);
+                    let threeRes = [], singleRes = [];
+                    for (let p of parts) {
+                        let up = p.toUpperCase();
+                        if (threeToSingle[up]) { threeRes.push(up.charAt(0) + up.slice(1).toLowerCase()); singleRes.push(threeToSingle[up]); }
+                        else if (up.length === 1 && singleToThree[up]) { threeRes.push(singleToThree[up]); singleRes.push(up); }
+                        else {
+                            for (let ch of up) { let s = singleToThree[ch.toUpperCase()]; if (s) { threeRes.push(s); singleRes.push(ch.toUpperCase()); } else { threeRes.push(ch); singleRes.push(ch); } }
+                        }
+                    }
+                    if (threeRes.length) return { three: threeRes, single: singleRes };
+                }
+                let clean = str.replace(/[\s,;]+/g, '');
+                if (/^[A-Za-z]+$/.test(clean)) {
+                    let singles = clean.toUpperCase().split('');
+                    let threes = singles.map(s => singleToThree[s] || s);
+                    return { three: threes, single: singles };
+                }
+                return { three: [], single: [] };
+            }
+
+            function fetchPDBSequence(pdb) {
+                const db = { "1UBQ": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG", "3GB1": "MQYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE", "1AKE": "MRIILLGAPGAGKGTQAQFIMEKYGIPQISTGDMLRAAVKSGSELGKQAKDIMDAGKLVTDELVIALVKERIAQEDCRNGFLLDGFPRT" };
+                return db[pdb.toUpperCase()] || "Met-Val-Ser-Leu-Pro-Glu-Gly-Lys-Ala-Arg";
+            }
+
+            // 更新统计UI
+            // function updateStatistics() {
+            //     if (!currentSingleLetters.length) {
+            //         totalCountSpan.innerText = '0';
+            //         uniqueCountSpan.innerText = '0';
+            //         hydrophobicPercentSpan.innerText = '0%';
+            //         seqLengthBadge.innerText = '长度:0';
+            //         quickAaPanel.innerHTML = '';
+            //         return;
+            //     }
+            //     const len = currentSingleLetters.length;
+            //     const unique = new Set(currentSingleLetters).size;
+            //     const hydroCount = currentSingleLetters.filter(s => hydrophobicSet.has(s)).length;
+            //     const percent = Math.round((hydroCount / len) * 100);
+            //     totalCountSpan.innerText = len;
+            //     uniqueCountSpan.innerText = unique;
+            //     hydrophobicPercentSpan.innerText = `${percent}%`;
+            //     seqLengthBadge.innerText = `长度:${len}`;
+
+            //     // 生成快速选中氨基酸按钮 (频率前5)
+            //     const freqMap = new Map();
+            //     currentSingleLetters.forEach(s => freqMap.set(s, (freqMap.get(s) || 0) + 1));
+            //     const sorted = Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
+            //     quickAaPanel.innerHTML = '';
+            //     sorted.forEach(([aa]) => {
+            //         const btn = document.createElement('div');
+            //         btn.className = 'quick-aa';
+            //         btn.innerText = `${aa} (${singleToThree[aa] || aa})`;
+            //         btn.addEventListener('click', (e) => {
+            //             e.stopPropagation();
+            //             const indices = [];
+            //             currentSingleLetters.forEach((s, idx) => { if (s === aa) indices.push(idx); });
+            //             selectedIndices.clear();
+            //             indices.forEach(i => selectedIndices.add(i));
+            //             updateSelectedVisual();
+            //             // 可选:自动滚动至第一个选中
+            //             if (ballElements[indices[0]]) ballElements[indices[0]]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            //         });
+            //         quickAaPanel.appendChild(btn);
+            //     });
+            // }
+
+            function initChainCoords() {
+                const size = parseInt(circleSizeInput.value);
+                const borderW = parseFloat(circleBorderInput.value);
+                const distance = size + borderW;
+                chainBallsData = [];
+                if (layoutMode === 'linear') {
+                    for (let i = 0; i < currentThreeLetters.length; i++) {
+                        chainBallsData.push({ x: i * distance, y: 0, angle: 0 });
+                    }
+                } else if (layoutMode === 'spiral') {
+                    const radiusStep = distance * 0.7;
+                    const angleStep = 0.45;
+                    for (let i = 0; i < currentThreeLetters.length; i++) {
+                        let r = radiusStep * Math.sqrt(i + 1);
+                        let theta = i * angleStep;
+                        let x = r * Math.cos(theta);
+                        let y = r * Math.sin(theta);
+                        chainBallsData.push({ x: x, y: y, angle: 0 });
+                    }
+                }
+                rotationStates = {};
+            }
+
+            function refreshChainPositions() {
+                const container = document.querySelector('.balls-container');
+                if (!container || !chainBallsData.length) return;
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                const size = parseInt(circleSizeInput.value);
+                const borderW = parseFloat(circleBorderInput.value);
+                const ballVisualR = (size + borderW * 2) / 2;
+
+                chainBallsData.forEach((data, i) => {
+                    const wrapper = ballElements[i];
+                    if (!wrapper) return;
+                    wrapper.style.left = (data.x - ballVisualR) + 'px';
+                    wrapper.style.top = (data.y - ballVisualR) + 'px';
+                    minX = Math.min(minX, data.x - ballVisualR);
+                    minY = Math.min(minY, data.y - ballVisualR);
+                    maxX = Math.max(maxX, data.x + ballVisualR);
+                    maxY = Math.max(maxY, data.y + ballVisualR);
+                });
+                const pad = 60;
+                const totalW = maxX - minX + pad * 2;
+                const totalH = maxY - minY + pad * 2;
+                const offsetX = -minX + pad;
+                const offsetY = -minY + pad;
+                container.style.width = totalW + 'px';
+                container.style.height = totalH + 'px';
+                container.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+            }
+
+            function renderBalls(threeArray, singleArray, preserveTransforms = false) {
+                previewArea.innerHTML = '';
+                if (!threeArray.length) { previewArea.innerHTML = '<div class="preview-placeholder">无效序列</div>'; return; }
+                const container = document.createElement('div');
+                container.className = 'balls-container';
+
+                const size = parseInt(circleSizeInput.value);
+                const borderW = parseFloat(circleBorderInput.value);
+                const borderCol = borderColorInput.value;
+                const fontCol = fontColorInput.value;
+                const bgCol = circleColorInput.value;
+                const shadowEnabled = shadowCheckbox.checked;
+                let customFontSize = parseInt(fontSizeInput.value);
+                const isAutoFont = !customFontSize || customFontSize <= 0;
+
+                if (!preserveTransforms) initChainCoords();
+
+                ballElements = [];
+                for (let i = 0; i < threeArray.length; i++) {
+                    let threeCode = threeArray[i];
+                    let display = threeCode.length >= 3 ? (threeCode[0].toUpperCase() + threeCode.slice(1).toLowerCase()) : threeCode.toUpperCase();
+                    if (display.length > 4) display = display.slice(0, 3);
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'ball-wrapper';
+                    wrapper.setAttribute('data-idx', i);
+                    const ball = document.createElement('div');
+                    ball.className = 'aa-ball';
+                    if (shadowEnabled) ball.classList.add('shadow-3d');
+                    ball.style.width = `${size}px`;
+                    ball.style.height = `${size}px`;
+                    ball.style.borderRadius = '50%';
+                    ball.style.backgroundColor = bgCol;
+                    ball.style.border = `${borderW}px solid ${borderCol}`;
+                    ball.style.color = fontCol;
+                    let finalFontSize = isAutoFont ? Math.max(11, size * 0.26) : customFontSize;
+                    ball.style.fontSize = `${finalFontSize}px`;
+                    ball.style.fontWeight = 'bold';
+                    ball.style.display = 'flex';
+                    ball.style.alignItems = 'center';
+                    ball.style.justifyContent = 'center';
+                    ball.textContent = display;
+                    ball.style.fontFamily = document.getElementById('fontFamilySelect').value;
+                    wrapper.appendChild(ball);
+                    container.appendChild(wrapper);
+                    ballElements.push(wrapper);
+                }
+                previewArea.appendChild(container);
+                selectedIndices.clear();
+                attachFullDragAndSelectEvents();
+                updateSelectedVisual();
+                requestAnimationFrame(() => refreshChainPositions());
+                // updateStatistics();
+            }
+
+            function updateSelectedVisual() {
+                ballElements.forEach((wrapper, idx) => {
+                    if (selectedIndices.has(idx)) wrapper.classList.add('selected-ball');
+                    else wrapper.classList.remove('selected-ball');
+                });
+            }
+
+            // function refreshStyle() {
+            //     if (currentThreeLetters.length) {
+            //         const savedAngles = chainBallsData.map(b => b.angle);
+            //         renderBalls(currentThreeLetters, currentSingleLetters, true);
+            //         if (savedAngles.length === chainBallsData.length) {
+            //             for (let i = 0; i < savedAngles.length; i++) chainBallsData[i].angle = savedAngles[i];
+            //             refreshChainPositions();
+            //         }
+            //     } else { loadDefaultSequence(); }
+            // }
+            function refreshStyle() {
+                if (currentThreeLetters.length) {
+                    const savedAngles = chainBallsData.map(b => b.angle);
+                    renderBalls(currentThreeLetters, currentSingleLetters, true);
+                    if (savedAngles.length === chainBallsData.length) {
+                        for (let i = 0; i < savedAngles.length; i++) {
+                            chainBallsData[i].angle = savedAngles[i];
+                        }
+                        refreshChainPositions();
+                    }
+                    // 恢复高亮
+                    if (lastHighlightPositions && lastHighlightPositions.size > 0) {
+                        const highlightColor = document.getElementById('manualHighlightColor').value;
+                        ballElements.forEach((wrapper, idx) => {
+                            if (lastHighlightPositions.has(idx)) {
+                                const ball = wrapper.querySelector('.aa-ball');
+                                if (ball) ball.style.backgroundColor = highlightColor;
+                            }
+                        });
+                    }
+                } else {
+                    loadDefaultSequence();
+                }
+            }
+            function applyManualHighlight() {
+                if (!ballElements.length) {
+                    alert("请先加载序列");
+                    return;
+                }
+
+                const positionsInput = document.getElementById('highlightPositions').value.trim();
+                if (!positionsInput) {
+                    alert("请输入要高亮的位置");
+                    return;
+                }
+
+                const highlightColor = document.getElementById('manualHighlightColor').value;
+
+                // 解析位置字符串 "3,5-8,12"
+                const positionsToHighlight = new Set();
+                // const parts = positionsInput.split(',');
+                const parts = positionsInput.replace(/，/g, ',').split(',');
+
+                for (let part of parts) {
+                    part = part.trim();
+                    if (part.includes('-')) {
+                        const [start, end] = part.split('-').map(Number);
+                        if (isNaN(start) || isNaN(end)) continue;
+                        for (let i = start; i <= end; i++) {
+                            if (i >= 1 && i <= currentThreeLetters.length) {
+                                positionsToHighlight.add(i - 1); // 转换为0索引
+                            }
+                        }
+                    } else {
+                        const pos = Number(part);
+                        if (!isNaN(pos) && pos >= 1 && pos <= currentThreeLetters.length) {
+                            positionsToHighlight.add(pos - 1);
+                        }
+                    }
+                }
+
+                if (positionsToHighlight.size === 0) {
+                    alert("没有有效的位置，请检查输入范围");
+                    return;
+                }
+
+                // 应用高亮
+                const size = parseInt(circleSizeInput.value);
+                const borderW = parseFloat(circleBorderInput.value);
+                const borderCol = borderColorInput.value;
+                const fontCol = fontColorInput.value;
+                const shadowEnabled = shadowCheckbox.checked;
+                let customFontSize = parseInt(fontSizeInput.value);
+                const isAutoFont = !customFontSize || customFontSize <= 0;
+                const fontFamily = document.getElementById('fontFamilySelect').value;
+                const defaultColor = circleColorInput.value;
+
+                // 只更新颜色，不重建整个结构
+                ballElements.forEach((wrapper, idx) => {
+                    const ball = wrapper.querySelector('.aa-ball');
+                    if (ball) {
+                        const shouldHighlight = positionsToHighlight.has(idx);
+                        ball.style.backgroundColor = shouldHighlight ? highlightColor : defaultColor;
+                    }
+                });
+
+                // 保存高亮记录
+                lastHighlightPositions = positionsToHighlight;
+            }
+
+            // 存储最后一次高亮的位置
+            let lastHighlightPositions = new Set();
+            let currentZoom = 1;
+            const MIN_ZOOM = 0.3;
+            const MAX_ZOOM = 3;
+            function loadMainSequence() {
+                let seqText = sequenceTextarea.value.trim();
+                let rawSeq = "";
+                if (seqText !== "") rawSeq = seqText;
+                else { let pdb = pdbCodeInput.value.trim(); rawSeq = fetchPDBSequence(pdb); }
+                const parsed = parseToBoth(rawSeq);
+                if (parsed.three.length === 0) { alert("序列无效"); return; }
+                currentThreeLetters = parsed.three;
+                currentSingleLetters = parsed.single;
+                layoutMode = 'linear';
+                renderBalls(currentThreeLetters, currentSingleLetters);
+            }
+
+            function loadDefaultSequence() { sequenceTextarea.value = "Glu-Ala-Lys-Gly-Ser-Thr-Arg-Pro"; loadMainSequence(); }
+
+            function handleBallClick(idx, event) {
+                if (!chainBallsData.length || idx >= chainBallsData.length) return;
+
+                // 获取当前状态，默认为0（未旋转）
+                let currentState = rotationStates[idx] || 0;
+                const baseAngle = parseInt(rotationAngleInput.value) || 30;
+                let targetAngleDeg = 0;
+
+                // 判断左键(button === 0)还是右键(button === 2)
+                if (event.button === 0) { // 左键 - 顺时针
+                    if (currentState === 1) {
+                        // 已经是顺时针状态，再次点击重置
+                        targetAngleDeg = 0;
+                        rotationStates[idx] = 0;
+                    } else {
+                        targetAngleDeg = -baseAngle;
+                        rotationStates[idx] = 1;
+                    }
+                } else if (event.button === 2) { // 右键 - 逆时针
+                    if (currentState === 2) {
+                        // 已经是逆时针状态，再次点击重置
+                        targetAngleDeg = 0;
+                        rotationStates[idx] = 0;
+                    } else {
+                        targetAngleDeg = baseAngle;
+                        rotationStates[idx] = 2;
+                    }
+                }
+
+                // 计算需要旋转的角度差
+                const currentAngle = chainBallsData[idx].angle || 0;
+                const deltaAngle = (targetAngleDeg * Math.PI / 180) - currentAngle;
+
+                if (Math.abs(deltaAngle) > 0.001) { // 避免无效旋转
+                    rotateSubChain(idx, deltaAngle);
+                    chainBallsData[idx].angle = targetAngleDeg * Math.PI / 180;
+                }
+            }
+            // function handleBallClick(idx) {
+            //     if (!chainBallsData.length || idx >= chainBallsData.length) return;
+            //     let state = rotationStates[idx] || 0;
+            //     state = (state + 1) % 3;
+            //     rotationStates[idx] = state;
+            //     const baseAngle = parseInt(rotationAngleInput.value) || 30;
+            //     let targetAngleDeg = 0;
+            //     if (state === 1) targetAngleDeg = -baseAngle;
+            //     else if (state === 2) targetAngleDeg = baseAngle;
+            //     const deltaAngle = (targetAngleDeg * Math.PI / 180) - chainBallsData[idx].angle;
+            //     rotateSubChain(idx, deltaAngle);
+            // }
+
+            // function rotateSubChain(pivotIdx, deltaAngle) {
+            //     const pivot = chainBallsData[pivotIdx];
+            //     pivot.angle += deltaAngle;
+            //     const cosA = Math.cos(deltaAngle);
+            //     const sinA = Math.sin(deltaAngle);
+            //     for (let i = pivotIdx + 1; i < chainBallsData.length; i++) {
+            //         const ball = chainBallsData[i];
+            //         let dx = ball.x - pivot.x;
+            //         let dy = ball.y - pivot.y;
+            //         let newX = dx * cosA - dy * sinA + pivot.x;
+            //         let newY = dx * sinA + dy * cosA + pivot.y;
+            //         ball.x = newX;
+            //         ball.y = newY;
+            //         ball.angle += deltaAngle;
+            //     }
+            //     refreshChainPositions();
+            // }
+
+            function rotateSubChain(pivotIdx, deltaAngle) {
+                const pivot = chainBallsData[pivotIdx];
+                const cosA = Math.cos(deltaAngle);
+                const sinA = Math.sin(deltaAngle);
+
+                for (let i = pivotIdx + 1; i < chainBallsData.length; i++) {
+                    const ball = chainBallsData[i];
+                    // 关键：使用相对于 pivot 的位置向量进行旋转
+                    let dx = ball.x - pivot.x;
+                    let dy = ball.y - pivot.y;
+
+                    // 二维旋转矩阵
+                    let newDx = dx * cosA - dy * sinA;
+                    let newDy = dx * sinA + dy * cosA;
+
+                    ball.x = pivot.x + newDx;
+                    ball.y = pivot.y + newDy;
+                }
+                refreshChainPositions();
+            }
+
+            function resetLayout() {
+                layoutMode = 'linear';
+                initChainCoords();
+                refreshChainPositions();
+            }
+
+            function setSpiralLayout() {
+                layoutMode = 'spiral';
+                initChainCoords();
+                refreshChainPositions();
+            }
+
+            function attachFullDragAndSelectEvents() {
+                const containerDiv = document.querySelector('.balls-container');
+                if (!containerDiv) return;
+                const newContainer = containerDiv.cloneNode(true);
+                containerDiv.parentNode.replaceChild(newContainer, containerDiv);
+                const finalContainer = document.querySelector('.balls-container');
+                const newBalls = [];
+                finalContainer.querySelectorAll('.ball-wrapper').forEach((w, idx) => {
+                    w.setAttribute('data-idx', idx);
+                    newBalls.push(w);
+                });
+                ballElements = newBalls;
+
+                let selectionRect = null;
+                let startSelX = 0, startSelY = 0;
+                let isSelecting = false;
+
+                finalContainer.addEventListener('mousedown', (e) => {
+                    const wrapperTarget = e.target.closest('.ball-wrapper');
+                    // if (wrapperTarget) {
+                    //     const idx = parseInt(wrapperTarget.getAttribute('data-idx'));
+                    //     if (!e.ctrlKey && !e.shiftKey) selectedIndices.clear();
+                    //     selectedIndices.add(idx);
+                    //     updateSelectedVisual();
+                    //     handleBallClick(idx);
+                    //     return;
+                    // }
+                    if (wrapperTarget) {
+                        const idx = parseInt(wrapperTarget.getAttribute('data-idx'));
+                        if (!e.ctrlKey && !e.shiftKey) selectedIndices.clear();
+                        selectedIndices.add(idx);
+                        updateSelectedVisual();
+
+                        // 阻止右键弹出上下文菜单
+                        if (e.button === 2) {
+                            e.preventDefault();
+                        }
+
+                        handleBallClick(idx, e);
+                        return;
+                    }
+                    isSelecting = true;
+                    startSelX = e.clientX;
+                    startSelY = e.clientY;
+                    selectionRect = document.createElement('div');
+                    selectionRect.className = 'selection-drag-box';
+                    selectionRect.style.position = 'absolute';
+                    finalContainer.style.position = 'relative';
+                    finalContainer.appendChild(selectionRect);
+
+                    const onMouseMove = (moveEv) => {
+                        if (!isSelecting) return;
+                        const left = Math.min(startSelX, moveEv.clientX);
+                        const top = Math.min(startSelY, moveEv.clientY);
+                        const width = Math.abs(moveEv.clientX - startSelX);
+                        const height = Math.abs(moveEv.clientY - startSelY);
+                        const containerRect = finalContainer.getBoundingClientRect();
+                        selectionRect.style.left = (left - containerRect.left) + 'px';
+                        selectionRect.style.top = (top - containerRect.top) + 'px';
+                        selectionRect.style.width = width + 'px';
+                        selectionRect.style.height = height + 'px';
+                    };
+                    const onMouseUp = (upEv) => {
+                        if (selectionRect) selectionRect.remove();
+                        if (isSelecting) {
+                            const containerRect = finalContainer.getBoundingClientRect();
+                            const selBox = {
+                                left: Math.min(startSelX, upEv.clientX) - containerRect.left,
+                                right: Math.max(startSelX, upEv.clientX) - containerRect.left,
+                                top: Math.min(startSelY, upEv.clientY) - containerRect.top,
+                                bottom: Math.max(startSelY, upEv.clientY) - containerRect.top
+                            };
+                            const newSelected = new Set();
+                            ballElements.forEach((wrapper, idx) => {
+                                const elRect = wrapper.getBoundingClientRect();
+                                const elLeft = elRect.left - containerRect.left;
+                                const elRight = elRect.right - containerRect.left;
+                                const elTop = elRect.top - containerRect.top;
+                                const elBottom = elRect.bottom - containerRect.top;
+                                if (elRight > selBox.left && elLeft < selBox.right && elBottom > selBox.top && elTop < selBox.bottom) newSelected.add(idx);
+                            });
+                            if (!upEv.ctrlKey && !upEv.shiftKey) selectedIndices = newSelected;
+                            else if (upEv.ctrlKey) newSelected.forEach(idx => selectedIndices.add(idx));
+                            else if (upEv.shiftKey) newSelected.forEach(idx => selectedIndices.add(idx));
+                            updateSelectedVisual();
+                        }
+                        isSelecting = false;
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                    };
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
+                // 禁用整个画布区域的右键菜单
+                finalContainer.addEventListener('contextmenu', function (e) {
+                    e.preventDefault();
+                    return false;
+                });
+            }
+
+            let savedPalette = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6'];
+            function updatePaletteUI() {
+                const containerDiv = document.getElementById('colorListArea');
+                if (!containerDiv) return;
+                containerDiv.innerHTML = '';
+                savedPalette.forEach(col => {
+                    const block = document.createElement('div');
+                    block.className = 'simple-color-block';
+                    block.style.backgroundColor = col;
+                    block.addEventListener('click', () => { circleColorInput.value = col; refreshStyle(); });
+                    containerDiv.appendChild(block);
+                });
+            }
+            function addColor() { let newCol = colorPicker.value; if (!savedPalette.includes(newCol)) { savedPalette.unshift(newCol); if (savedPalette.length > 12) savedPalette.pop(); updatePaletteUI(); } }
+
+            async function downloadSVG() {
+                const container = previewArea.querySelector('.balls-container');
+                if (!container) { alert("无可导出内容"); return; }
+                const cloneContainer = container.cloneNode(true);
+                const sizeW = container.scrollWidth, sizeH = container.scrollHeight;
+                function inlineAllStyles(el) {
+                    const computed = window.getComputedStyle(el);
+                    let styleStr = '';
+                    for (let i = 0; i < computed.length; i++) { const prop = computed[i]; const value = computed.getPropertyValue(prop); if (prop !== 'transition' && prop !== 'animation') styleStr += `${prop}: ${value}; `; }
+                    el.style.cssText = styleStr;
+                    for (let child of el.children) inlineAllStyles(child);
+                }
+                inlineAllStyles(cloneContainer);
+                const svgNS = "http://www.w3.org/2000/svg";
+                const svg = document.createElementNS(svgNS, "svg");
+                svg.setAttribute("width", sizeW); svg.setAttribute("height", sizeH); svg.setAttribute("viewBox", `0 0 ${sizeW} ${sizeH}`);
+                const foreign = document.createElementNS(svgNS, "foreignObject");
+                foreign.setAttribute("width", "100%"); foreign.setAttribute("height", "100%");
+                foreign.appendChild(cloneContainer); svg.appendChild(foreign);
+                const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
+                const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'sequence_export.svg'; a.click(); URL.revokeObjectURL(url);
+            }
+            async function downloadPPT() {
+                //设置缩放比例
+                if (currentZoom != 1) {
+                    // 临时重置缩放
+                    currentZoom = 1;
+                    previewArea.style.transform = 'scale(1)';
+                }
+                if (!currentThreeLetters.length) {
+                    alert("请先加载序列");
+                    return;
+                }
+
+                try {
+                    const PptxGenJS = window.PptxGenJS;
+                    const pptx = new PptxGenJS();
+                    pptx.layout = 'LAYOUT_WIDE';
+
+                    const slide = pptx.addSlide();
+
+                    // 获取当前样式
+                    const sizePx = parseInt(circleSizeInput.value);
+                    const borderW = parseFloat(circleBorderInput.value);
+
+                    // 像素转英寸
+                    const sizeInch = sizePx / 96;
+
+                    // 关键：获取容器和球体的实际位置（用户旋转后的位置）
+                    const container = document.querySelector('.balls-container');
+                    const containerRect = container.getBoundingClientRect();
+
+                    // 收集所有球体的实际屏幕坐标
+                    const ballPositions = [];
+                    ballElements.forEach((wrapper, idx) => {
+                        const rect = wrapper.getBoundingClientRect();
+                        // 转换为相对于容器左上角的坐标（英寸）
+                        const xInch = (rect.left - containerRect.left) / 96;
+                        const yInch = (rect.top - containerRect.top) / 96;
+                        ballPositions.push({ x: xInch, y: yInch, idx });
+                    });
+
+                    // 找到最小坐标，用于偏移到合适位置
+                    let minX = Math.min(...ballPositions.map(p => p.x));
+                    let minY = Math.min(...ballPositions.map(p => p.y));
+
+                    // 字体大小
+                    const fontSizePt = Math.max(8, Math.min(20, sizePx * 0.25));
+
+                    // 绘制每个球体（使用用户旋转后的实际位置）
+                    for (const pos of ballPositions) {
+                        const i = pos.idx;
+                        const threeLetter = currentThreeLetters[i];
+                        const display = threeLetter.substring(0, 3);
+
+                        const isHighlighted = lastHighlightPositions && lastHighlightPositions.has(i);
+                        const fillColor = isHighlighted ? highlightColorPicker.value.substring(1) : circleColorInput.value.substring(1);
+
+                        // 偏移到合适位置（+0.5英寸边距）
+                        const x = pos.x - minX + 0.5;
+                        const y = pos.y - minY + 1.0;
+
+                        // 绘制圆形
+                        slide.addShape('ellipse', {
+                            x: x,
+                            y: y,
+                            w: sizeInch,
+                            h: sizeInch,
+                            fill: { color: fillColor },
+                            line: { color: borderColorInput.value.substring(1), width: borderW }
+                        });
+
+                        // 添加文字
+                        slide.addText(display, {
+                            x: x,
+                            y: y,
+                            w: sizeInch,
+                            h: sizeInch,
+                            fontSize: fontSizePt,
+                            bold: true,
+                            color: fontColorInput.value.substring(1),
+                            align: 'center',
+                            valign: 'middle'
+                        });
+                    }
+
+                    // 添加标题
+                    slide.addText(`氨基酸序列图谱 (共${currentThreeLetters.length}个残基)`, {
+                        x: 0.5,
+                        y: 0.2,
+                        w: 9,
+                        h: 0.6,
+                        fontSize: 16,
+                        bold: true,
+                        color: '1A1C2A'
+                    });
+
+                    // 添加序列信息
+                    const sequenceStr = currentSingleLetters.join('');
+                    const wrappedSeq = sequenceStr.match(/.{1,50}/g)?.join('\n') || sequenceStr;
+                    slide.addText(`序列:\n${wrappedSeq}`, {
+                        x: 0.5,
+                        y: 7.0,
+                        w: 9,
+                        h: 1.2,
+                        fontSize: 8,
+                        color: '666666'
+                    });
+
+                    await pptx.writeFile({ fileName: `sequence_editable_${Date.now()}.pptx` });
+                    alert("PPT 导出成功！已保留您调整后的球体位置。");
+
+                } catch (error) {
+                    console.error("PPT导出失败:", error);
+                    alert("导出失败: " + error.message);
+                }
+            }
+            loadBtn.addEventListener('click', loadMainSequence);
+            // applyStyleBtn.addEventListener('click', refreshStyle);
+            saveColorBtn.addEventListener('click', addColor);
+            const manualHighlightBtn = document.getElementById('manualHighlightBtn');
+            if (manualHighlightBtn) {
+                manualHighlightBtn.addEventListener('click', applyManualHighlight);
+            } else {
+                console.warn('manualHighlightBtn 元素不存在');
+            }
+            // manualHighlightBtn.addEventListener('click', applyManualHighlight);
+            clearSelectionBtn.addEventListener('click', () => { selectedIndices.clear(); updateSelectedVisual(); });
+            resetLayoutBtn.addEventListener('click', resetLayout);
+            toggleSpiralBtn.addEventListener('click', setSpiralLayout);
+            // exportSVG.addEventListener('click', downloadSVG);
+            exportPPT.addEventListener('click', downloadPPT);
+            circleSizeInput.addEventListener('input', refreshStyle);
+            circleColorInput.addEventListener('input', refreshStyle);
+            circleBorderInput.addEventListener('input', refreshStyle);
+            borderColorInput.addEventListener('input', refreshStyle);
+            fontColorInput.addEventListener('input', refreshStyle);
+            fontSizeInput.addEventListener('input', refreshStyle);
+            shadowCheckbox.addEventListener('change', refreshStyle);
+            document.getElementById('fontFamilySelect').addEventListener('change', refreshStyle);
+
+            sequenceTextarea.value = "Glu-Ala-Lys-Gly-Ser-Thr-Arg-Pro";
+            pdbCodeInput.value = "1UBQ";
+            previewArea.addEventListener('wheel', function (e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                let newZoom = currentZoom * delta;
+                if (newZoom >= MIN_ZOOM && newZoom <= MAX_ZOOM) {
+                    currentZoom = newZoom;
+                    previewArea.style.transform = `scale(${currentZoom})`;
+                    previewArea.style.transformOrigin = 'center center';
+                }
+            }, { passive: false });
+
+            loadMainSequence();
+            updatePaletteUI();
+        })();
+    </script>
+</body>
+
+</html>
