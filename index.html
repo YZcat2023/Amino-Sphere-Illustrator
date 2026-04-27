@@ -32,10 +32,10 @@
         <div class="right-pane">
             <div class="group">
                 <h3>序列输入</h3>
-                <div class="input-group">
+                <!-- <div class="input-group">
                     <label>PDB 代码：</label>
                     <input type="text" id="pdbCode" placeholder="1UBQ, 3GB1" value="1UBQ">
-                </div>
+                </div> -->
                 <div class="input-group" style="flex-direction: column; align-items: stretch;">
                     <label>序列 (单字母/三字母):</label>
                     <textarea id="sequence" rows="3" placeholder="例: Glu-Ala-Lys-Gly-Ser 或 MVLS"></textarea>
@@ -293,6 +293,29 @@
                     <button id="clearSelectionBtn" class="small-btn">清除选中</button> -->
                 </div>
             </div>
+            <div class="group">
+                <h3>序列计数</h3>
+                <div class="input-group">
+                    <label>显示序号：</label>
+                    <input type="checkbox" id="showCounterCheckbox" checked>
+                    <span class="param-hint">在每个小球下方显示位置编号</span>
+                </div>
+                <div class="input-group">
+                    <label>显示间隔：</label>
+                    <input type="number" id="counterInterval" value="10" min="1" max="50" step="1" style="width:80px;">
+                    <span class="param-hint">每隔N个氨基酸显示一次（如10则显示10,20,30...）</span>
+                </div>
+                <div class="input-group">
+                    <label>文字颜色：</label>
+                    <input type="color" id="counterColor" value="#000000">
+                </div>
+                <div class="input-group">
+                    <label>文字大小(px)：</label>
+                    <input type="number" id="counterFontSize" value="10" min="8" max="24" step="1" style="width:70px;">
+                    <span class="param-hint">0=自动适配</span>
+                </div>
+                <!-- <div class="param-hint">可自定义序号颜色和显示间隔</div> -->
+            </div>
             <div class="group shape-special-group">
                 <h3>特殊形状</h3>
                 <div class="input-group-container">
@@ -348,7 +371,7 @@
         (function () {
             // DOM 元素
             const previewArea = document.getElementById('previewArea');
-            const pdbCodeInput = document.getElementById('pdbCode');
+            // const pdbCodeInput = document.getElementById('pdbCode');
             const sequenceTextarea = document.getElementById('sequence');
             const loadBtn = document.getElementById('loadSequenceBtn');
             const circleSizeInput = document.getElementById('circleSize');
@@ -390,6 +413,10 @@
             let labelPositionsSet = new Set();  // 需要显示编号的位置
             let labelColor = '#FFFFFF';         // 编号颜色
 
+            let showCounter = true;      // 是否显示计数
+            let counterInterval = 10;    // 计数间隔
+            let counterColor = '#888888'; // 计数颜色
+            let counterFontSize = 10;      // 计数文字大小
             const threeToSingle = { 'ALA': 'A', 'ARG': 'R', 'ASN': 'N', 'ASP': 'D', 'CYS': 'C', 'GLN': 'Q', 'GLU': 'E', 'GLY': 'G', 'HIS': 'H', 'ILE': 'I', 'LEU': 'L', 'LYS': 'K', 'MET': 'M', 'PHE': 'F', 'PRO': 'P', 'SER': 'S', 'THR': 'T', 'TRP': 'W', 'TYR': 'Y', 'VAL': 'V' };
             const singleToThree = { 'A': 'Ala', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'C': 'Cys', 'Q': 'Gln', 'E': 'Glu', 'G': 'Gly', 'H': 'His', 'I': 'Ile', 'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe', 'P': 'Pro', 'S': 'Ser', 'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val' };
             const hydrophobicSet = new Set(['A', 'V', 'L', 'I', 'P', 'F', 'M', 'W']);
@@ -423,48 +450,6 @@
                 const db = { "1UBQ": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG", "3GB1": "MQYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE", "1AKE": "MRIILLGAPGAGKGTQAQFIMEKYGIPQISTGDMLRAAVKSGSELGKQAKDIMDAGKLVTDELVIALVKERIAQEDCRNGFLLDGFPRT" };
                 return db[pdb.toUpperCase()] || "Met-Val-Ser-Leu-Pro-Glu-Gly-Lys-Ala-Arg";
             }
-
-            // 更新统计UI
-            // function updateStatistics() {
-            //     if (!currentSingleLetters.length) {
-            //         totalCountSpan.innerText = '0';
-            //         uniqueCountSpan.innerText = '0';
-            //         hydrophobicPercentSpan.innerText = '0%';
-            //         seqLengthBadge.innerText = '长度:0';
-            //         quickAaPanel.innerHTML = '';
-            //         return;
-            //     }
-            //     const len = currentSingleLetters.length;
-            //     const unique = new Set(currentSingleLetters).size;
-            //     const hydroCount = currentSingleLetters.filter(s => hydrophobicSet.has(s)).length;
-            //     const percent = Math.round((hydroCount / len) * 100);
-            //     totalCountSpan.innerText = len;
-            //     uniqueCountSpan.innerText = unique;
-            //     hydrophobicPercentSpan.innerText = `${percent}%`;
-            //     seqLengthBadge.innerText = `长度:${len}`;
-
-            //     // 生成快速选中氨基酸按钮 (频率前5)
-            //     const freqMap = new Map();
-            //     currentSingleLetters.forEach(s => freqMap.set(s, (freqMap.get(s) || 0) + 1));
-            //     const sorted = Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
-            //     quickAaPanel.innerHTML = '';
-            //     sorted.forEach(([aa]) => {
-            //         const btn = document.createElement('div');
-            //         btn.className = 'quick-aa';
-            //         btn.innerText = `${aa} (${singleToThree[aa] || aa})`;
-            //         btn.addEventListener('click', (e) => {
-            //             e.stopPropagation();
-            //             const indices = [];
-            //             currentSingleLetters.forEach((s, idx) => { if (s === aa) indices.push(idx); });
-            //             selectedIndices.clear();
-            //             indices.forEach(i => selectedIndices.add(i));
-            //             updateSelectedVisual();
-            //             // 可选:自动滚动至第一个选中
-            //             if (ballElements[indices[0]]) ballElements[indices[0]]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            //         });
-            //         quickAaPanel.appendChild(btn);
-            //     });
-            // }
 
             function initChainCoords() {
                 const size = parseInt(circleSizeInput.value);
@@ -572,7 +557,8 @@
                         label.style.top = '-20px';
                         label.style.left = '50%';
                         label.style.transform = 'translateX(-50%)';
-                        label.style.fontSize = '11px';
+                        // label.style.fontSize = '11px';
+                        let finalFontSize = counterFontSize;
                         label.style.fontWeight = 'bold';
                         label.style.color = labelColor;
                         label.style.backgroundColor = 'rgba(0,0,0,0.65)';
@@ -583,6 +569,38 @@
                         label.style.pointerEvents = 'none';
                         label.style.zIndex = '20';
                         wrapper.appendChild(label);
+                    }
+                    // 添加计数标签（在每个小球下方显示序号）
+                    if (showCounter) {
+                        const counterLabel = document.createElement('div');
+                        counterLabel.className = 'counter-label';
+                        const positionNumber = i + 1;
+
+                        // 根据间隔决定是否显示
+                        if (positionNumber % counterInterval === 0 || counterInterval === 1) {
+                            counterLabel.textContent = positionNumber.toString();
+                        } else {
+                            counterLabel.textContent = '';
+                        }
+
+                        counterLabel.style.position = 'absolute';
+                        counterLabel.style.bottom = '-22px';
+                        counterLabel.style.left = '50%';
+                        counterLabel.style.transform = 'translateX(-50%)';
+                        // counterLabel.style.fontSize = '10px';
+                        counterLabel.style.fontSize = `${finalFontSize}px`;
+                        counterLabel.style.fontWeight = 'normal';
+                        counterLabel.style.color = counterColor;
+                        counterLabel.style.backgroundColor = 'transparent';
+                        counterLabel.style.fontFamily = 'monospace';
+                        counterLabel.style.whiteSpace = 'nowrap';
+                        counterLabel.style.pointerEvents = 'none';
+                        counterLabel.style.zIndex = '20';
+                        // counterLabel.style.fontFamily = 
+                        const mainFontFamily = document.getElementById('fontFamilySelect').value;
+                        counterLabel.style.fontFamily = mainFontFamily;
+
+                        wrapper.appendChild(counterLabel);
                     }
                 }
                 previewArea.appendChild(container);
@@ -631,16 +649,6 @@
                 });
             }
 
-            // function refreshStyle() {
-            //     if (currentThreeLetters.length) {
-            //         const savedAngles = chainBallsData.map(b => b.angle);
-            //         renderBalls(currentThreeLetters, currentSingleLetters, true);
-            //         if (savedAngles.length === chainBallsData.length) {
-            //             for (let i = 0; i < savedAngles.length; i++) chainBallsData[i].angle = savedAngles[i];
-            //             refreshChainPositions();
-            //         }
-            //     } else { loadDefaultSequence(); }
-            // }
             function refreshStyle() {
                 if (currentThreeLetters.length) {
                     const savedAngles = chainBallsData.map(b => b.angle);
@@ -740,7 +748,7 @@
                 let seqText = sequenceTextarea.value.trim();
                 let rawSeq = "";
                 if (seqText !== "") rawSeq = seqText;
-                else { let pdb = pdbCodeInput.value.trim(); rawSeq = fetchPDBSequence(pdb); }
+                // else { let pdb = pdbCodeInput.value.trim(); rawSeq = fetchPDBSequence(pdb); }
                 const parsed = parseToBoth(rawSeq);
                 if (parsed.three.length === 0) { alert("序列无效"); return; }
                 currentThreeLetters = parsed.three;
@@ -1072,20 +1080,27 @@
                             align: 'center',
                             valign: 'middle'
                         });
+                        // 添加计数标签（与网页显示逻辑一致）
+                        if (showCounter) {
+                            const positionNumber = i + 1;
+                            if (positionNumber % counterInterval === 0 || counterInterval === 1) {
+                                const counterY = y + sizeInch + 0.08;  // 小球下方
+                                slide.addText(positionNumber.toString(), {
+                                    x: x,
+                                    y: counterY,
+                                    w: sizeInch,
+                                    h: 0.15,
+                                    fontSize: Math.max(6, counterFontSize * 1),  // px 转 pt
+                                    bold: false,
+                                    color: counterColor.substring(1),
+                                    align: 'center',
+                                    valign: 'top'
+                                });
+                            }
+                        }
                     }
 
-                    // // 添加标题
-                    // slide.addText(`氨基酸序列图谱 (共${currentThreeLetters.length}个残基)`, {
-                    //     x: 0.5,
-                    //     y: 0.2,
-                    //     w: 9,
-                    //     h: 0.6,
-                    //     fontSize: 16,
-                    //     bold: true,
-                    //     color: '1A1C2A'
-                    // });
 
-                    // 添加序列信息
                     const sequenceStr = currentSingleLetters.join('');
                     const wrappedSeq = sequenceStr.match(/.{1,50}/g)?.join('\n') || sequenceStr;
                     slide.addText(`序列:\n${wrappedSeq}`, {
@@ -1115,11 +1130,7 @@
             } else {
                 console.warn('manualHighlightBtn 元素不存在');
             }
-            // manualHighlightBtn.addEventListener('click', applyManualHighlight);
-            // clearSelectionBtn.addEventListener('click', () => { selectedIndices.clear(); updateSelectedVisual(); });
-            // resetLayoutBtn.addEventListener('click', resetLayout);
-            // toggleSpiralBtn.addEventListener('click', setSpiralLayout);
-            // exportSVG.addEventListener('click', downloadSVG);
+
             exportPPT.addEventListener('click', downloadPPT);
             circleSizeInput.addEventListener('input', refreshStyle);
             circleColorInput.addEventListener('input', refreshStyle);
@@ -1128,10 +1139,11 @@
             fontColorInput.addEventListener('input', refreshStyle);
             fontSizeInput.addEventListener('input', refreshStyle);
             shadowCheckbox.addEventListener('change', refreshStyle);
+
             document.getElementById('fontFamilySelect').addEventListener('change', refreshStyle);
 
-            sequenceTextarea.value = "Glu-Ala-Lys-Gly-Ser-Thr-Arg-Pro";
-            pdbCodeInput.value = "1UBQ";
+            sequenceTextarea.value = "Phe-Val-Asn-Gln-His-Leu-Cys-Gly-Ser-His-Leu-Val-Glu-Ala-Leu";
+            // pdbCodeInput.value = " ";
             previewArea.addEventListener('wheel', function (e) {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -1147,6 +1159,43 @@
                 showLabelsCheckbox.addEventListener('change', function (e) {
                     showLabels = e.target.checked;
                     refreshStyle();  // 刷新画布
+                });
+            }
+
+            // 序列计数相关
+            const showCounterCheckbox = document.getElementById('showCounterCheckbox');
+            if (showCounterCheckbox) {
+                showCounterCheckbox.addEventListener('change', function (e) {
+                    showCounter = e.target.checked;
+                    refreshStyle();
+                });
+            }
+
+            const counterIntervalInput = document.getElementById('counterInterval');
+            if (counterIntervalInput) {
+                counterIntervalInput.addEventListener('change', function (e) {
+                    counterInterval = parseInt(e.target.value) || 10;
+                    if (counterInterval < 1) counterInterval = 1;
+                    if (counterInterval > 50) counterInterval = 50;
+                    refreshStyle();
+                });
+            }
+
+            const counterColorPicker = document.getElementById('counterColor');
+            if (counterColorPicker) {
+                counterColorPicker.addEventListener('change', function (e) {
+                    counterColor = e.target.value;
+                    refreshStyle();
+                });
+            }
+            // 计数文字大小监听
+            const counterFontSizeInput = document.getElementById('counterFontSize');
+            if (counterFontSizeInput) {
+                counterFontSizeInput.addEventListener('change', function (e) {
+                    counterFontSize = parseInt(e.target.value) || 10;
+                    if (counterFontSize < 0) counterFontSize = 0;
+                    if (counterFontSize > 24) counterFontSize = 24;
+                    refreshStyle();
                 });
             }
             loadMainSequence();
