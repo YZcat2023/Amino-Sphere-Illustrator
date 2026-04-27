@@ -430,3 +430,25 @@ input[type="color"] {
     z-index: 20;
     text-align: center;
 }
+
+#tutorialModal {
+    font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
+}
+
+#tutorialModal ul {
+    list-style-type: none;
+    padding-left: 8px;
+}
+
+#tutorialModal li {
+    margin: 8px 0;
+    position: relative;
+    padding-left: 24px;
+}
+
+#tutorialModal li:before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: #3b82f6;
+}

@@ -237,8 +237,7 @@
                 <div id="savedColors">
                     <div id="colorListArea" class="color-palette-simple"></div>
                 </div>
-                <!-- <div class="input-group" style="margin-top: 12px;"><label>比对高亮色：</label><input type="color"
-                        id="highlightColorPicker" value="#F97316"></div> -->
+
             </div>
 
             <div class="group">
@@ -344,7 +343,51 @@
             </div>
         </div>
     </div>
+    <div id="tutorialModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
+        <div
+            style="background: #232635; border-radius: 24px; max-width: 500px; width: 90%; padding: 24px; color: #eef2ff; border: 1px solid #3b82f6;">
+            <h2 style="margin: 0 0 16px 0; color: #3b82f6;">欢迎使用氨基酸序列可视化工具</h2>
 
+            <div style="margin: 20px 0;">
+                <h3 style="margin: 12px 0 8px 0;">基本操作</h3>
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                    <li>输入多肽序列，点击「渲染序列」</li>
+                    <li>点击小球：旋转其后所有氨基酸</li>
+                    <li>左键点击顺时针旋转，右键点击逆时针旋转</li>
+                    <li>再次点击可恢复原始方向,可设置旋转角度</li>
+                    <li>鼠标滚轮：缩放画布</li>
+                </ul>
+
+                <h3 style="margin: 12px 0 8px 0;">自定义样式</h3>
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                    <li>调整小球大小、颜色、边框、字体、文字大小等</li>
+                    <!-- <li>调色盘：自定义颜色便于多次使用</li> -->
+                    <li>保存喜欢的颜色到调色板</li>
+                </ul>
+
+                <h3 style="margin: 12px 0 8px 0;">标注功能</h3>
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                    <li>高亮指定位置：输入位置如 5-8,12</li>
+                    <li>显示编号：指定位置显示氨基酸序号</li>
+                    <li>末端标记：自动显示 N 端和 C 端</li>
+                </ul>
+
+                <h3 style="margin: 12px 0 8px 0;">导出功能</h3>
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                    <li>PPT：导出可编辑的 PowerPoint 文件</li>
+                </ul>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+                    <input type="checkbox" id="dontShowAgain"> 不再显示
+                </label>
+                <button id="closeTutorialBtn"
+                    style="background: #3b82f6; border: none; padding: 8px 24px; border-radius: 40px; color: white; cursor: pointer;">开始使用</button>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script>
         (function () {
@@ -624,29 +667,8 @@
                     wrapper.appendChild(ball);
                     container.appendChild(wrapper);
                     ballElements.push(wrapper);
-                    // 添加编号标签（仅在 showLabels 为 true 时显示）
-                    if (showLabels && labelPositionsSet.has(i)) {
-                        console.log('为位置', i + 1, '添加编号');
-                        const label = document.createElement('div');
-                        label.className = 'position-label';
-                        label.textContent = (i + 1).toString();
-                        label.style.position = 'absolute';
-                        label.style.top = '-20px';
-                        label.style.left = '50%';
-                        label.style.transform = 'translateX(-50%)';
-                        // label.style.fontSize = '11px';
-                        let finalFontSize = counterFontSize;
-                        label.style.fontWeight = 'bold';
-                        label.style.color = labelColor;
-                        label.style.backgroundColor = 'rgba(0,0,0,0.65)';
-                        label.style.padding = '2px 6px';
-                        label.style.borderRadius = '12px';
-                        label.style.fontFamily = 'monospace';
-                        label.style.whiteSpace = 'nowrap';
-                        label.style.pointerEvents = 'none';
-                        label.style.zIndex = '20';
-                        wrapper.appendChild(label);
-                    }
+
+
                     // 添加计数标签（在每个小球下方显示序号）
                     if (showCounter) {
                         const counterLabel = document.createElement('div');
@@ -860,7 +882,69 @@
                 // 保存高亮记录
                 lastHighlightPositions = positionsToHighlight;
             }
+            function applyNumberLabels() {
+                if (!ballElements.length) {
+                    alert("请先加载序列");
+                    return;
+                }
 
+                const positionsInput = document.getElementById('labelPositions').value.trim();
+                if (!positionsInput) {
+                    // 如果输入为空，清除所有编号
+                    document.querySelectorAll('.custom-number-label').forEach(el => el.remove());
+                    return;
+                }
+
+                // 解析位置
+                const positionsToLabel = new Set();
+                const parts = positionsInput.replace(/，/g, ',').split(',');
+
+                for (let part of parts) {
+                    part = part.trim();
+                    if (part.includes('-')) {
+                        const [start, end] = part.split('-').map(Number);
+                        if (isNaN(start) || isNaN(end)) continue;
+                        for (let i = start; i <= end; i++) {
+                            if (i >= 1 && i <= currentThreeLetters.length) {
+                                positionsToLabel.add(i - 1);
+                            }
+                        }
+                    } else {
+                        const pos = Number(part);
+                        if (!isNaN(pos) && pos >= 1 && pos <= currentThreeLetters.length) {
+                            positionsToLabel.add(pos - 1);
+                        }
+                    }
+                }
+
+                // 移除旧的编号
+                document.querySelectorAll('.custom-number-label').forEach(el => el.remove());
+
+                // 添加新编号
+                positionsToLabel.forEach(idx => {
+                    const wrapper = ballElements[idx];
+                    if (wrapper) {
+                        const label = document.createElement('div');
+                        label.className = 'custom-number-label';
+                        label.textContent = (idx + 1).toString();
+                        label.style.position = 'absolute';
+                        label.style.top = '-25px';
+                        label.style.left = '50%';
+                        label.style.transform = 'translateX(-50%)';
+                        label.style.fontSize = '14px';
+                        label.style.fontWeight = 'bold';
+                        label.style.color = '#FFFFFF';
+                        label.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                        label.style.padding = '2px 6px';
+                        label.style.borderRadius = '12px';
+                        label.style.fontFamily = 'monospace';
+                        label.style.whiteSpace = 'nowrap';
+                        label.style.pointerEvents = 'none';
+                        label.style.zIndex = '30';
+                        wrapper.appendChild(label);
+                    }
+                });
+            }
             // 存储最后一次高亮的位置
             let lastHighlightPositions = new Set();
             let currentZoom = 1;
@@ -919,36 +1003,6 @@
                     chainBallsData[idx].angle = targetAngleDeg * Math.PI / 180;
                 }
             }
-            // function handleBallClick(idx) {
-            //     if (!chainBallsData.length || idx >= chainBallsData.length) return;
-            //     let state = rotationStates[idx] || 0;
-            //     state = (state + 1) % 3;
-            //     rotationStates[idx] = state;
-            //     const baseAngle = parseInt(rotationAngleInput.value) || 30;
-            //     let targetAngleDeg = 0;
-            //     if (state === 1) targetAngleDeg = -baseAngle;
-            //     else if (state === 2) targetAngleDeg = baseAngle;
-            //     const deltaAngle = (targetAngleDeg * Math.PI / 180) - chainBallsData[idx].angle;
-            //     rotateSubChain(idx, deltaAngle);
-            // }
-
-            // function rotateSubChain(pivotIdx, deltaAngle) {
-            //     const pivot = chainBallsData[pivotIdx];
-            //     pivot.angle += deltaAngle;
-            //     const cosA = Math.cos(deltaAngle);
-            //     const sinA = Math.sin(deltaAngle);
-            //     for (let i = pivotIdx + 1; i < chainBallsData.length; i++) {
-            //         const ball = chainBallsData[i];
-            //         let dx = ball.x - pivot.x;
-            //         let dy = ball.y - pivot.y;
-            //         let newX = dx * cosA - dy * sinA + pivot.x;
-            //         let newY = dx * sinA + dy * cosA + pivot.y;
-            //         ball.x = newX;
-            //         ball.y = newY;
-            //         ball.angle += deltaAngle;
-            //     }
-            //     refreshChainPositions();
-            // }
 
             function rotateSubChain(pivotIdx, deltaAngle) {
                 const pivot = chainBallsData[pivotIdx];
@@ -1382,10 +1436,53 @@
                     refreshStyle();
                 });
             }
+            // 新手教程对话框逻辑
+            function showTutorial() {
+                // 检查 localStorage 是否已标记为不显示
+                const dontShow = localStorage.getItem('dontShowTutorial');
+                if (dontShow === 'true') {
+                    return;
+                }
+
+                const modal = document.getElementById('tutorialModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
+            }
+
+            function closeTutorial() {
+                const modal = document.getElementById('tutorialModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+
+                const dontShowAgain = document.getElementById('dontShowAgain');
+                if (dontShowAgain && dontShowAgain.checked) {
+                    localStorage.setItem('dontShowTutorial', 'true');
+                }
+            }
+
+            // 绑定事件（放在事件绑定区域）
+            const closeBtn = document.getElementById('closeTutorialBtn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeTutorial);
+            }
+
+            // 点击模态框背景关闭
+            const modal = document.getElementById('tutorialModal');
+            if (modal) {
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) {
+                        closeTutorial();
+                    }
+                });
+            }
             loadMainSequence();
             updatePaletteUI();
+            showTutorial();
         })();
     </script>
+
 </body>
 
 </html>
