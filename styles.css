@@ -373,3 +373,45 @@ input[type="color"] {
     min-height: 0;
     border-radius: 24px;
 }
+
+/* 只对特殊形状组生效 */
+.shape-special-group .input-group {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 8px 12px !important;
+    width: 100% !important;
+}
+
+.shape-special-group .input-group label {
+    font-weight: 500;
+    font-size: 0.8rem;
+    min-width: 65px;
+    white-space: nowrap;
+    color: #b9c3e2;
+    font-family: '微软雅黑', sans-serif;
+    flex-shrink: 0;
+}
+
+.shape-special-group .input-group input,
+.shape-special-group .input-group select,
+.shape-special-group .input-group .custom-select-wrapper {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+}
+
+.shape-special-group .input-group input[type="color"] {
+    width: 48px;
+    flex: none;
+}
+
+.shape-special-group .input-group input[type="number"] {
+    flex: 1;
+    min-width: 60px;
+}
+
+.shape-special-group .input-group input[type="text"] {
+    flex: 1;
+    min-width: 80px;
+}

@@ -258,8 +258,8 @@
                 <div id="savedColors">
                     <div id="colorListArea" class="color-palette-simple"></div>
                 </div>
-                <div class="input-group" style="margin-top: 12px;"><label>比对高亮色：</label><input type="color"
-                        id="highlightColorPicker" value="#F97316"></div>
+                <!-- <div class="input-group" style="margin-top: 12px;"><label>比对高亮色：</label><input type="color"
+                        id="highlightColorPicker" value="#F97316"></div> -->
             </div>
 
             <div class="group">
@@ -271,8 +271,13 @@
                 <div class="input-group">
                     <label>高亮颜色：</label>
                     <input type="color" id="manualHighlightColor" value="#F97316">
+                    <button id="manualHighlightBtn" class="action-btn">应用高亮</button>
                 </div>
-                <button id="manualHighlightBtn" class="action-btn">应用高亮</button>
+                <div class="input-group">
+                    <label>显示编号：</label>
+                    <input type="checkbox" style="width: 20px; height: 20px;" id="showLabelsCheckbox" checked>
+                    <span class="param-hint" style="margin-left:0;">开启后在高亮位置显示氨基酸编号</span>
+                </div>
                 <div class="param-hint">支持单个位置(3,5,12)或连续范围(5-8)，多个用逗号分隔</div>
             </div>
 
@@ -283,10 +288,57 @@
                 <div class="param-hint">点击某球：该球及其后续序列视作长棍进行旋转。左键顺时针，右键逆时针，再点击恢复原状</div>
                 <!-- <div class="param-hint">点击1次顺时针，2次逆时针，3次恢复原状</div> -->
                 <div class="layout-control">
-                    <button id="resetLayoutBtn" class="small-btn">重置布局</button>
+                    <!-- <button id="resetLayoutBtn" class="small-btn">重置布局</button>
                     <button id="toggleSpiralBtn" class="small-btn">螺旋布局 🌊</button>
-                    <button id="clearSelectionBtn" class="small-btn">清除选中</button>
+                    <button id="clearSelectionBtn" class="small-btn">清除选中</button> -->
                 </div>
+            </div>
+            <div class="group shape-special-group">
+                <h3>特殊形状</h3>
+                <div class="input-group-container">
+                    <div class="input-group">
+                        <label>形状类型：</label>
+                        <select id="decorShapeType"
+                            style="flex:2; background:#11131f; border:1px solid #3e445b; border-radius:16px; padding:8px 12px; color:white;">
+                            <option value="rect">圆角矩形</option>
+                            <option value="ellipse">椭圆形</option>
+                            <option value="circle">正圆形</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>填充颜色：</label>
+                        <input type="color" id="decorFillColor" value="#FFFFFF">
+                    </div>
+                    <div class="input-group">
+                        <label>边框颜色：</label>
+                        <input type="color" id="decorBorderColor" value="#333333">
+                    </div>
+                    <div class="input-group">
+                        <label>边框粗细：</label>
+                        <input type="number" id="decorBorderWidth" value="2" min="0" max="8" step="0.5">
+                    </div>
+                    <div class="input-group">
+                        <label>圆角半径(px)：</label>
+                        <input type="number" id="decorRadius" value="20" min="0" max="50" step="2">
+                    </div>
+                    <div class="input-group">
+                        <label>文字内容：</label>
+                        <input type="text" id="decorText" placeholder="输入文字" value="标签">
+                    </div>
+                    <div class="input-group">
+                        <label>文字颜色：</label>
+                        <input type="color" id="decorTextColor" value="#000000">
+                    </div>
+                    <div class="input-group">
+                        <label>文字大小(px)：</label>
+                        <input type="number" id="decorTextSize" value="16" min="8" max="48" step="2">
+                    </div>
+                </div>
+                <div class="layout-control" style="margin-top:12px;">
+                    <button id="addDecorShapeBtn" class="small-btn" style="background:#8B5CF6;">添加形状</button>
+                    <button id="clearDecorShapesBtn" class="small-btn">清空所有</button>
+                </div>
+                <div class="param-hint">添加的形状会出现在画布左上角，可拖拽移动位置</div>
             </div>
         </div>
     </div>
@@ -314,9 +366,9 @@
             const sourceAAInput = document.getElementById('sourceAA');
             // const targetAAInput = document.getElementById('targetAA');
             const rotationAngleInput = document.getElementById('rotationAngleInput');
-            const clearSelectionBtn = document.getElementById('clearSelectionBtn');
-            const resetLayoutBtn = document.getElementById('resetLayoutBtn');
-            const toggleSpiralBtn = document.getElementById('toggleSpiralBtn');
+            // const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+            // const resetLayoutBtn = document.getElementById('resetLayoutBtn');
+            // const toggleSpiralBtn = document.getElementById('toggleSpiralBtn');
             // const exportSVG = document.getElementById('exportSVGbtn');
             const exportPPT = document.getElementById('exportPPTbtn');
             const totalCountSpan = document.getElementById('totalCount');
@@ -330,10 +382,13 @@
             let currentSingleLetters = [];
             let ballElements = [];
             let selectedIndices = new Set();
-
+            let showLabels = true;  // 是否显示编号
             let chainBallsData = []; // {x, y, angle}
             let rotationStates = {};
             let layoutMode = 'linear'; // linear, spiral
+
+            let labelPositionsSet = new Set();  // 需要显示编号的位置
+            let labelColor = '#FFFFFF';         // 编号颜色
 
             const threeToSingle = { 'ALA': 'A', 'ARG': 'R', 'ASN': 'N', 'ASP': 'D', 'CYS': 'C', 'GLN': 'Q', 'GLU': 'E', 'GLY': 'G', 'HIS': 'H', 'ILE': 'I', 'LEU': 'L', 'LYS': 'K', 'MET': 'M', 'PHE': 'F', 'PRO': 'P', 'SER': 'S', 'THR': 'T', 'TRP': 'W', 'TYR': 'Y', 'VAL': 'V' };
             const singleToThree = { 'A': 'Ala', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'C': 'Cys', 'Q': 'Gln', 'E': 'Glu', 'G': 'Gly', 'H': 'His', 'I': 'Ile', 'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe', 'P': 'Pro', 'S': 'Ser', 'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val' };
@@ -507,6 +562,28 @@
                     wrapper.appendChild(ball);
                     container.appendChild(wrapper);
                     ballElements.push(wrapper);
+                    // 添加编号标签（仅在 showLabels 为 true 时显示）
+                    if (showLabels && labelPositionsSet.has(i)) {
+                        console.log('为位置', i + 1, '添加编号');
+                        const label = document.createElement('div');
+                        label.className = 'position-label';
+                        label.textContent = (i + 1).toString();
+                        label.style.position = 'absolute';
+                        label.style.top = '-20px';
+                        label.style.left = '50%';
+                        label.style.transform = 'translateX(-50%)';
+                        label.style.fontSize = '11px';
+                        label.style.fontWeight = 'bold';
+                        label.style.color = labelColor;
+                        label.style.backgroundColor = 'rgba(0,0,0,0.65)';
+                        label.style.padding = '2px 6px';
+                        label.style.borderRadius = '12px';
+                        label.style.fontFamily = 'monospace';
+                        label.style.whiteSpace = 'nowrap';
+                        label.style.pointerEvents = 'none';
+                        label.style.zIndex = '20';
+                        wrapper.appendChild(label);
+                    }
                 }
                 previewArea.appendChild(container);
                 selectedIndices.clear();
@@ -514,6 +591,37 @@
                 updateSelectedVisual();
                 requestAnimationFrame(() => refreshChainPositions());
                 // updateStatistics();
+            }
+
+            function applyLabels() {
+                const positionsInput = document.getElementById('labelPositions').value.trim();
+                labelColor = document.getElementById('labelColor').value;
+                showLabels = document.getElementById('showLabelsCheckbox').checked;
+
+                // 解析位置（与之前相同）
+                labelPositionsSet.clear();
+                if (positionsInput) {
+                    const parts = positionsInput.replace(/，/g, ',').split(',');
+                    for (let part of parts) {
+                        part = part.trim();
+                        if (part === '') continue;
+                        if (part.includes('-')) {
+                            const [start, end] = part.split('-').map(Number);
+                            for (let i = start; i <= end; i++) {
+                                if (i >= 1 && i <= currentThreeLetters.length) {
+                                    labelPositionsSet.add(i - 1);
+                                }
+                            }
+                        } else {
+                            const pos = Number(part);
+                            if (!isNaN(pos) && pos >= 1 && pos <= currentThreeLetters.length) {
+                                labelPositionsSet.add(pos - 1);
+                            }
+                        }
+                    }
+                }
+
+                refreshStyle();
             }
 
             function updateSelectedVisual() {
@@ -966,16 +1074,16 @@
                         });
                     }
 
-                    // 添加标题
-                    slide.addText(`氨基酸序列图谱 (共${currentThreeLetters.length}个残基)`, {
-                        x: 0.5,
-                        y: 0.2,
-                        w: 9,
-                        h: 0.6,
-                        fontSize: 16,
-                        bold: true,
-                        color: '1A1C2A'
-                    });
+                    // // 添加标题
+                    // slide.addText(`氨基酸序列图谱 (共${currentThreeLetters.length}个残基)`, {
+                    //     x: 0.5,
+                    //     y: 0.2,
+                    //     w: 9,
+                    //     h: 0.6,
+                    //     fontSize: 16,
+                    //     bold: true,
+                    //     color: '1A1C2A'
+                    // });
 
                     // 添加序列信息
                     const sequenceStr = currentSingleLetters.join('');
@@ -989,7 +1097,7 @@
                         color: '666666'
                     });
 
-                    await pptx.writeFile({ fileName: `sequence_editable_${Date.now()}.pptx` });
+                    await pptx.writeFile({ fileName: `sequence_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pptx` });
                     // alert("PPT 导出成功！已保留您调整后的球体位置。");
 
 
@@ -1008,9 +1116,9 @@
                 console.warn('manualHighlightBtn 元素不存在');
             }
             // manualHighlightBtn.addEventListener('click', applyManualHighlight);
-            clearSelectionBtn.addEventListener('click', () => { selectedIndices.clear(); updateSelectedVisual(); });
-            resetLayoutBtn.addEventListener('click', resetLayout);
-            toggleSpiralBtn.addEventListener('click', setSpiralLayout);
+            // clearSelectionBtn.addEventListener('click', () => { selectedIndices.clear(); updateSelectedVisual(); });
+            // resetLayoutBtn.addEventListener('click', resetLayout);
+            // toggleSpiralBtn.addEventListener('click', setSpiralLayout);
             // exportSVG.addEventListener('click', downloadSVG);
             exportPPT.addEventListener('click', downloadPPT);
             circleSizeInput.addEventListener('input', refreshStyle);
@@ -1034,7 +1142,13 @@
                     previewArea.style.transformOrigin = 'center center';
                 }
             }, { passive: false });
-
+            const showLabelsCheckbox = document.getElementById('showLabelsCheckbox');
+            if (showLabelsCheckbox) {
+                showLabelsCheckbox.addEventListener('change', function (e) {
+                    showLabels = e.target.checked;
+                    refreshStyle();  // 刷新画布
+                });
+            }
             loadMainSequence();
             updatePaletteUI();
         })();
