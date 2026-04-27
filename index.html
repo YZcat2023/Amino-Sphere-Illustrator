@@ -442,6 +442,7 @@
             let showEnds = true;  // 是否显示末端标记
             let currentNIsReversed = false;
             let currentCIsReversed = false;
+            let highlightColor_global = '#F97316';
             const threeToSingle = { 'ALA': 'A', 'ARG': 'R', 'ASN': 'N', 'ASP': 'D', 'CYS': 'C', 'GLN': 'Q', 'GLU': 'E', 'GLY': 'G', 'HIS': 'H', 'ILE': 'I', 'LEU': 'L', 'LYS': 'K', 'MET': 'M', 'PHE': 'F', 'PRO': 'P', 'SER': 'S', 'THR': 'T', 'TRP': 'W', 'TYR': 'Y', 'VAL': 'V' };
             const singleToThree = { 'A': 'Ala', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'C': 'Cys', 'Q': 'Gln', 'E': 'Glu', 'G': 'Gly', 'H': 'His', 'I': 'Ile', 'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe', 'P': 'Pro', 'S': 'Ser', 'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val' };
             const hydrophobicSet = new Set(['A', 'V', 'L', 'I', 'P', 'F', 'M', 'W']);
@@ -1221,8 +1222,10 @@
                         const display = threeLetter.substring(0, 3);
 
                         const isHighlighted = lastHighlightPositions && lastHighlightPositions.has(i);
-                        const fillColor = isHighlighted ? highlightColorPicker.value.substring(1) : circleColorInput.value.substring(1);
-
+                        // const fillColor = isHighlighted ? highlightColorPicker.value.substring(1) : circleColorInput.value.substring(1);
+                        const fillColor = isHighlighted
+                            ? (document.getElementById('manualHighlightColor').value || '#F97316').substring(1)
+                            : (document.getElementById('circleColor')?.value || '#3B82F6').substring(1);
                         // 偏移到合适位置（+0.5英寸边距）
                         const x = pos.x - minX + 0.5;
                         const y = pos.y - minY + 1.0;
