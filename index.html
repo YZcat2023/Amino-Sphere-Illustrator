@@ -32,10 +32,7 @@
         <div class="right-pane">
             <div class="group">
                 <h3>序列输入</h3>
-                <!-- <div class="input-group">
-                    <label>PDB 代码：</label>
-                    <input type="text" id="pdbCode" placeholder="1UBQ, 3GB1" value="1UBQ">
-                </div> -->
+
                 <div class="input-group" style="flex-direction: column; align-items: stretch;">
                     <label>序列 (单字母/三字母):</label>
                     <textarea id="sequence" rows="3" placeholder="例: Glu-Ala-Lys-Gly-Ser 或 MVLS"></textarea>
@@ -55,30 +52,7 @@
                     <div class="input-group"><label>边框色：</label><input type="color" id="borderColor" value="#1E293B">
                     </div>
 
-                    <!-- <div class="input-group">
-                        <label>字体类型：</label>
-                        <div class="custom-select-wrapper" style="flex:2">
-                            <div class="custom-select" id="fontFamilyCustomSelect">
-                                <div class="select-trigger">
-                                    <span class="select-value">微软雅黑</span>
-                                    <span class="select-arrow">▼</span>
-                                </div>
-                                <div class="select-dropdown">
-                                    <div class="select-option" data-value="'微软雅黑', 'Microsoft YaHei', sans-serif"
-                                        data-display="微软雅黑">微软雅黑</div>
-                                    <div class="select-option" data-value="'Segoe UI', system-ui, sans-serif"
-                                        data-display="Segoe UI">Segoe UI</div>
-                                    <div class="select-option" data-value="'Arial', sans-serif" data-display="Arial">
-                                        Arial</div>
-                                </div>
-                            </div>
-                            <select id="fontFamilySelect" style="display:none">
-                                <option value="'微软雅黑', 'Microsoft YaHei', sans-serif">微软雅黑</option>
-                                <option value="'Segoe UI', system-ui, sans-serif">Segoe UI</option>
-                                <option value="'Arial', sans-serif">Arial</option>
-                            </select>
-                        </div>
-                    </div> -->
+
                     <div class="input-group">
                         <label>字体类型：</label>
                         <div class="custom-select-wrapper">
@@ -244,8 +218,13 @@
 
                     <div class="input-group"><label>字体大小(px)：</label><input type="number" id="fontSize" value="0"
                             min="0" max="30" step="1"></div>
-                    <div class="input-group"><label>模拟光影：</label><input type="checkbox" id="shadowEffect"
-                            style="width: 20px; height: 20px;"></div>
+                    <!-- <div class="input-group"><label>模拟光影：</label><input type="checkbox" id="shadowEffect"
+                            style="width: 20px; height: 20px;"></div> -->
+                    <div class="input-group">
+                        <label>显示N端/C端：</label>
+                        <input type="checkbox" style="width: 20px; height: 20px;" id="showEndsCheckbox" checked>
+                        <!-- <span class="param-hint">显示N端(氨基)和C端(羧基)</span> -->
+                    </div>
                 </div>
                 <!-- <button id="applyStyleBtn" class="action-btn">应用样式</button> -->
             </div>
@@ -380,7 +359,7 @@
             const borderColorInput = document.getElementById('borderColor');
             const fontColorInput = document.getElementById('fontColor');
             const fontSizeInput = document.getElementById('fontSize');
-            const shadowCheckbox = document.getElementById('shadowEffect');
+            // const shadowCheckbox = document.getElementById('shadowEffect');
             // const applyStyleBtn = document.getElementById('applyStyleBtn');
             const colorPicker = document.getElementById('colorPicker');
             const highlightColorPicker = document.getElementById('highlightColorPicker');
@@ -417,6 +396,9 @@
             let counterInterval = 10;    // 计数间隔
             let counterColor = '#888888'; // 计数颜色
             let counterFontSize = 10;      // 计数文字大小
+            let showEnds = true;  // 是否显示末端标记
+            let currentNIsReversed = false;
+            let currentCIsReversed = false;
             const threeToSingle = { 'ALA': 'A', 'ARG': 'R', 'ASN': 'N', 'ASP': 'D', 'CYS': 'C', 'GLN': 'Q', 'GLU': 'E', 'GLY': 'G', 'HIS': 'H', 'ILE': 'I', 'LEU': 'L', 'LYS': 'K', 'MET': 'M', 'PHE': 'F', 'PRO': 'P', 'SER': 'S', 'THR': 'T', 'TRP': 'W', 'TYR': 'Y', 'VAL': 'V' };
             const singleToThree = { 'A': 'Ala', 'R': 'Arg', 'N': 'Asn', 'D': 'Asp', 'C': 'Cys', 'Q': 'Gln', 'E': 'Glu', 'G': 'Gly', 'H': 'His', 'I': 'Ile', 'L': 'Leu', 'K': 'Lys', 'M': 'Met', 'F': 'Phe', 'P': 'Pro', 'S': 'Ser', 'T': 'Thr', 'W': 'Trp', 'Y': 'Tyr', 'V': 'Val' };
             const hydrophobicSet = new Set(['A', 'V', 'L', 'I', 'P', 'F', 'M', 'W']);
@@ -474,9 +456,37 @@
                 rotationStates = {};
             }
 
+            // function refreshChainPositions() {
+            //     const container = document.querySelector('.balls-container');
+            //     if (!container || !chainBallsData.length) return;
+            //     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            //     const size = parseInt(circleSizeInput.value);
+            //     const borderW = parseFloat(circleBorderInput.value);
+            //     const ballVisualR = (size + borderW * 2) / 2;
+
+            //     chainBallsData.forEach((data, i) => {
+            //         const wrapper = ballElements[i];
+            //         if (!wrapper) return;
+            //         wrapper.style.left = (data.x - ballVisualR) + 'px';
+            //         wrapper.style.top = (data.y - ballVisualR) + 'px';
+            //         minX = Math.min(minX, data.x - ballVisualR);
+            //         minY = Math.min(minY, data.y - ballVisualR);
+            //         maxX = Math.max(maxX, data.x + ballVisualR);
+            //         maxY = Math.max(maxY, data.y + ballVisualR);
+            //     });
+            //     const pad = 60;
+            //     const totalW = maxX - minX + pad * 2;
+            //     const totalH = maxY - minY + pad * 2;
+            //     const offsetX = -minX + pad;
+            //     const offsetY = -minY + pad;
+            //     container.style.width = totalW + 'px';
+            //     container.style.height = totalH + 'px';
+            //     container.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+            // }
             function refreshChainPositions() {
                 const container = document.querySelector('.balls-container');
                 if (!container || !chainBallsData.length) return;
+
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                 const size = parseInt(circleSizeInput.value);
                 const borderW = parseFloat(circleBorderInput.value);
@@ -492,16 +502,83 @@
                     maxX = Math.max(maxX, data.x + ballVisualR);
                     maxY = Math.max(maxY, data.y + ballVisualR);
                 });
-                const pad = 60;
+
+                const pad = 200;
                 const totalW = maxX - minX + pad * 2;
                 const totalH = maxY - minY + pad * 2;
+
+                // 这里计算偏移量，将肽链移动到画布中央
                 const offsetX = -minX + pad;
                 const offsetY = -minY + pad;
+
                 container.style.width = totalW + 'px';
                 container.style.height = totalH + 'px';
-                container.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-            }
+                container.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${currentZoom})`;
+                // 更新末端标记的文字和方向
+                function updateEndMarkersText() {
+                    if (!showEnds || ballElements.length < 2) return;
 
+                    // 获取第一个和第二个球体的位置
+                    const firstWrapper = ballElements[0];
+                    const secondWrapper = ballElements[1];
+                    const lastWrapper = ballElements[ballElements.length - 1];
+                    const secondLastWrapper = ballElements[ballElements.length - 2];
+
+                    if (!firstWrapper || !secondWrapper || !lastWrapper || !secondLastWrapper) return;
+
+                    const firstRect = firstWrapper.getBoundingClientRect();
+                    const secondRect = secondWrapper.getBoundingClientRect();
+                    const lastRect = lastWrapper.getBoundingClientRect();
+                    const secondLastRect = secondLastWrapper.getBoundingClientRect();
+
+                    // N端方向
+                    const nIsReversed = secondRect.left < firstRect.left;
+                    // C端方向
+                    const cIsReversed = secondLastRect.left > lastRect.left;
+
+                    // 更新 N 端标记文字
+                    const nTerm = firstWrapper.querySelector('.end-label');
+                    if (nTerm) {
+                        nTerm.textContent = nIsReversed ? 'NH₂' : 'H₂N';
+                        // 调整位置
+                        if (nIsReversed) {
+                            nTerm.style.right = '';
+                            nTerm.style.left = '100%';
+                            nTerm.style.marginLeft = '6px';
+                            nTerm.style.marginRight = '';
+                        } else {
+                            nTerm.style.left = '';
+                            nTerm.style.right = '100%';
+                            nTerm.style.marginRight = '6px';
+                            nTerm.style.marginLeft = '';
+                        }
+                    }
+
+                    // 更新 C 端标记文字
+                    const cTerm = lastWrapper.querySelector('.end-label');
+                    if (cTerm) {
+                        cTerm.textContent = cIsReversed ? 'HOOC' : 'COOH';
+                        // 调整位置
+                        if (cIsReversed) {
+                            cTerm.style.left = '';
+                            cTerm.style.right = '100%';
+                            cTerm.style.marginRight = '6px';
+                            cTerm.style.marginLeft = '';
+                        } else {
+                            cTerm.style.right = '';
+                            cTerm.style.left = '100%';
+                            cTerm.style.marginLeft = '6px';
+                            cTerm.style.marginRight = '';
+                        }
+                    }
+                    // 存入全局变量，供 PPT 导出使用
+                    currentNIsReversed = nIsReversed;
+                    currentCIsReversed = cIsReversed;
+                }
+
+                // 在 refreshChainPositions 末尾调用
+                updateEndMarkersText();
+            }
             function renderBalls(threeArray, singleArray, preserveTransforms = false) {
                 previewArea.innerHTML = '';
                 if (!threeArray.length) { previewArea.innerHTML = '<div class="preview-placeholder">无效序列</div>'; return; }
@@ -513,7 +590,7 @@
                 const borderCol = borderColorInput.value;
                 const fontCol = fontColorInput.value;
                 const bgCol = circleColorInput.value;
-                const shadowEnabled = shadowCheckbox.checked;
+                // const shadowEnabled = shadowCheckbox.checked;
                 let customFontSize = parseInt(fontSizeInput.value);
                 const isAutoFont = !customFontSize || customFontSize <= 0;
 
@@ -529,7 +606,7 @@
                     wrapper.setAttribute('data-idx', i);
                     const ball = document.createElement('div');
                     ball.className = 'aa-ball';
-                    if (shadowEnabled) ball.classList.add('shadow-3d');
+                    // if (shadowEnabled) ball.classList.add('shadow-3d');
                     ball.style.width = `${size}px`;
                     ball.style.height = `${size}px`;
                     ball.style.borderRadius = '50%';
@@ -601,6 +678,51 @@
                         counterLabel.style.fontFamily = mainFontFamily;
 
                         wrapper.appendChild(counterLabel);
+                    }
+                    // 获取当前选中的字体
+                    const mainFontFamily = document.getElementById('fontFamilySelect').value;
+                    // 在 renderBalls 函数中，创建每个 ball 的循环内添加
+                    // N 端创建 - 独立条件
+                    if (showEnds && i === 0) {
+                        const nTerm = document.createElement('div');
+                        nTerm.className = 'end-label';
+                        nTerm.textContent = 'H₂N';
+                        nTerm.style.position = 'absolute';
+                        nTerm.style.right = '100%';
+                        nTerm.style.top = '50%';
+                        nTerm.style.transform = 'translateY(-50%)';
+                        nTerm.style.marginRight = '6px';
+                        nTerm.style.fontSize = `${size * 0.5}px`;
+                        nTerm.style.fontWeight = 'bold';
+                        nTerm.style.color = '#000000';
+                        nTerm.style.backgroundColor = 'transparent';
+                        nTerm.style.whiteSpace = 'nowrap';
+                        nTerm.style.fontFamily = mainFontFamily;
+                        nTerm.style.pointerEvents = 'none';
+                        wrapper.appendChild(nTerm);
+                        console.log('N端已创建');  // 调试用
+                    }
+                    // 添加末端标记（使用相对定位，不计算绝对坐标）
+                    if (showEnds && ballElements.length >= 2) {
+
+                        if (i === currentThreeLetters.length - 1) {
+                            const cTerm = document.createElement('div');
+                            cTerm.className = 'end-label';
+                            cTerm.textContent = 'COOH';
+                            cTerm.style.position = 'absolute';
+                            cTerm.style.left = '100%';
+                            cTerm.style.top = '50%';
+                            cTerm.style.transform = 'translateY(-50%)';
+                            cTerm.style.marginLeft = '6px';
+                            cTerm.style.fontSize = `${size * 0.5}px`;
+                            cTerm.style.fontWeight = 'bold';
+                            cTerm.style.color = '#000000';
+                            cTerm.style.backgroundColor = 'transparent';
+                            cTerm.style.whiteSpace = 'nowrap';
+                            cTerm.style.fontFamily = mainFontFamily;
+                            cTerm.style.pointerEvents = 'none';
+                            wrapper.appendChild(cTerm);
+                        }
                     }
                 }
                 previewArea.appendChild(container);
@@ -720,7 +842,7 @@
                 const borderW = parseFloat(circleBorderInput.value);
                 const borderCol = borderColorInput.value;
                 const fontCol = fontColorInput.value;
-                const shadowEnabled = shadowCheckbox.checked;
+                // const shadowEnabled = shadowCheckbox.checked;
                 let customFontSize = parseInt(fontSizeInput.value);
                 const isAutoFont = !customFontSize || customFontSize <= 0;
                 const fontFamily = document.getElementById('fontFamilySelect').value;
@@ -880,14 +1002,7 @@
 
                 finalContainer.addEventListener('mousedown', (e) => {
                     const wrapperTarget = e.target.closest('.ball-wrapper');
-                    // if (wrapperTarget) {
-                    //     const idx = parseInt(wrapperTarget.getAttribute('data-idx'));
-                    //     if (!e.ctrlKey && !e.shiftKey) selectedIndices.clear();
-                    //     selectedIndices.add(idx);
-                    //     updateSelectedVisual();
-                    //     handleBallClick(idx);
-                    //     return;
-                    // }
+
                     if (wrapperTarget) {
                         const idx = parseInt(wrapperTarget.getAttribute('data-idx'));
                         if (!e.ctrlKey && !e.shiftKey) selectedIndices.clear();
@@ -1098,6 +1213,68 @@
                                 });
                             }
                         }
+                        if (showEnds) {
+                            const padding = 0;
+                            const radius = sizeInch / 2;
+
+                            // 估算文字宽度：每个字符约 0.2 英寸（基于字体大小）
+                            const estimateTextWidth = (text) => {
+                                return (text.length * sizePx * 0.4) / 96;  // 每个字符约0.4倍字体大小转英寸
+                            };
+
+                            if (i === 0) {
+                                const nText = currentNIsReversed ? 'NH₂' : 'H₂N';
+                                const textWidth = estimateTextWidth(nText) * 1.4;
+                                // N端：小球左侧，文本框右对齐
+                                const nX = x - padding - textWidth;
+                                slide.addText(nText, {
+                                    x: nX,
+                                    y: y,
+                                    w: textWidth,
+                                    h: sizeInch,
+                                    fontSize: sizePx * 0.5,
+                                    bold: true,
+                                    color: '000000',
+                                    align: 'right',
+                                    valign: 'middle'
+                                });
+                            }
+
+                            if (i === currentThreeLetters.length - 1) {
+                                const cText = currentCIsReversed ? 'HOOC' : 'COOH';
+                                const textWidth = estimateTextWidth(cText) * 1.4;
+
+                                if (currentCIsReversed) {
+                                    // 反向：C端在左侧，文本框右对齐
+                                    const cX = x - padding - textWidth;
+                                    slide.addText(cText, {
+                                        x: cX,
+                                        y: y,
+                                        w: textWidth,
+                                        h: sizeInch,
+                                        fontSize: sizePx * 0.5,
+                                        bold: true,
+                                        color: '000000',
+                                        align: 'right',
+                                        valign: 'middle'
+                                    });
+                                } else {
+                                    // 正向：C端在右侧，文本框左对齐
+                                    const cX = x + sizeInch + padding;
+                                    slide.addText(cText, {
+                                        x: cX,
+                                        y: y,
+                                        w: textWidth,
+                                        h: sizeInch,
+                                        fontSize: sizePx * 0.5,
+                                        bold: true,
+                                        color: '000000',
+                                        align: 'left',
+                                        valign: 'middle'
+                                    });
+                                }
+                            }
+                        }
                     }
 
 
@@ -1138,7 +1315,7 @@
             borderColorInput.addEventListener('input', refreshStyle);
             fontColorInput.addEventListener('input', refreshStyle);
             fontSizeInput.addEventListener('input', refreshStyle);
-            shadowCheckbox.addEventListener('change', refreshStyle);
+            // shadowCheckbox.addEventListener('change', refreshStyle);
 
             document.getElementById('fontFamilySelect').addEventListener('change', refreshStyle);
 
@@ -1195,6 +1372,13 @@
                     counterFontSize = parseInt(e.target.value) || 10;
                     if (counterFontSize < 0) counterFontSize = 0;
                     if (counterFontSize > 24) counterFontSize = 24;
+                    refreshStyle();
+                });
+            }
+            const showEndsCheckbox = document.getElementById('showEndsCheckbox');
+            if (showEndsCheckbox) {
+                showEndsCheckbox.addEventListener('change', function (e) {
+                    showEnds = e.target.checked;
                     refreshStyle();
                 });
             }
